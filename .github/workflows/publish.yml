@@ -2,7 +2,7 @@ name: Build & Publish UNF ICS (KBH & Lyngby)
 
 on:
   schedule:
-    # 每6小时（UTC）跑一次；可按需调整
+    # Every 6 hours (UTC)
     - cron: "0 */6 * * *"
   workflow_dispatch: {}
 
@@ -32,7 +32,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4 python-dateutil
 
-      - name: Generate ICS feeds
+      # Fail fast if secrets missing (never echo real values)
+      - name: Check required secrets exist
+        env:
+          UNF_USER: ${{ secrets.UNF_USER }}
+          UNF_PASS: ${{ secrets.UNF_PASS }}
+        run: |
+          if [ -z "${UNF_USER}" ] || [ -z "${UNF_PASS}" ]; then
+            echo "Missing UNF_USER/UNF_PASS secrets."; exit 1;
+          fi
+
+      - name: Generate ICS feeds (KBH & Lyngby)
         env:
           UNF_USER: ${{ secrets.UNF_USER }}
           UNF_PASS: ${{ secrets.UNF_PASS }}

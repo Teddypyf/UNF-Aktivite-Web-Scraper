@@ -4,12 +4,12 @@
 Login -> Crawl -> Parse -> Generate two ICS feeds (KBH & Lyngby) with TZID=Europe/Copenhagen.
 No intermediate CSV.
 
-Env secrets:
-  UNF_USER, UNF_PASS  (CI 使用;本地可交互输入)
-Usage:
+Env (in CI via GitHub Actions Secrets):
+  UNF_USER, UNF_PASS
+Usage (local):
   python unf_events_to_ics.py --out-dir dist --pages 5
 """
-import os, re, time, getpass, argparse, hashlib
+import os, sys, re, time, getpass, argparse, hashlib
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
 
@@ -20,74 +20,96 @@ from dateutil import parser as dateparser
 BASE = "https://frivillig.unf.dk"
 LOGIN_URL = "https://frivillig.unf.dk/login/?next=/events/kbh/"
 LOCATIONS = {
-    "kbh":   "/events/kbh/",
-    "lyngby":"/events/lyngby/",
+    "kbh":    "/events/kbh/",
+    "lyngby": "/events/lyngby/",
 }
-
 ORDER = ["Navn","Dato","Ugedag","Klokkeslæt","Vagter","Reserverede","Pladser","Deltagere","Ekstern/Intern"]
 
-DEFAULT_USERNAME = "YIPE"
-DEFAULT_PASSWORD = "SeSaMe20041015"
+DEFAULT_USERNAME = "TPPE"
+DEFAULT_PASSWORD = "123123"
 
-# --- Helpers ---
+# ---------- Credentials (CI-safe) ----------
 def prompt_credentials():
-    user = os.getenv("UNF_USER") or input(f"Username [{DEFAULT_USERNAME}]: ") or DEFAULT_USERNAME
-    env_pwd = os.getenv("UNF_PASS")
-    if env_pwd:
-        pwd = env_pwd
-    else:
-        typed = getpass.getpass("Password (press Enter to use default): ")
-        pwd = typed if typed else DEFAULT_PASSWORD
+    user = os.getenv("UNF_USER")
+    pwd  = os.getenv("UNF_PASS")
+
+    # Non-interactive (CI): require env and never call input()
+    if os.getenv("GITHUB_ACTIONS") == "true" or not sys.stdin.isatty():
+        if not user or not pwd:
+            raise RuntimeError("Missing UNF_USER/UNF_PASS in environment for non-interactive run.")
+        return user, pwd
+
+    # Local interactive fallback
+    user = user or input(f"Username [{DEFAULT_USERNAME}]: ") or DEFAULT_USERNAME
+    entered = getpass.getpass("Password (press Enter to use default): ")
+    pwd = pwd or (entered if entered else DEFAULT_PASSWORD)
     return user, pwd
 
-def get_csrf(session):
+# ---------- Session & Login ----------
+def get_csrf(session: requests.Session) -> str:
     r = session.get(LOGIN_URL, timeout=20); r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
-    hidden = soup.find("input", {"name":"csrfmiddlewaretoken"})
+    hidden = soup.find("input", {"name": "csrfmiddlewaretoken"})
     field_token = hidden["value"] if hidden and hidden.has_attr("value") else None
     cookie_token = session.cookies.get("csrftoken")
     if not field_token and not cookie_token:
-        raise RuntimeError("CSRF token not found")
+        raise RuntimeError("CSRF token not found.")
     return field_token or cookie_token
 
-def login(session, username, password):
+def login(session: requests.Session, username: str, password: str) -> None:
     token = get_csrf(session)
     headers = {"Referer": LOGIN_URL, "Origin": BASE}
-    payload = {"username":username, "password":password, "csrfmiddlewaretoken":token, "next": "/events/kbh/"}
+    payload = {
+        "username": username,
+        "password": password,
+        "csrfmiddlewaretoken": token,
+        "next": "/events/kbh/",
+    }
     session.post(LOGIN_URL, data=payload, headers=headers, timeout=20, allow_redirects=True)
+    # Sanity check (look for logout marker on KBH page)
     chk = session.get(urljoin(BASE, LOCATIONS["kbh"]), timeout=20)
-    ok = (chk.status_code == 200) and any(x in chk.text.lower() for x in ["log ud","logout","/logout"])
+    ok = (chk.status_code == 200) and any(x in chk.text.lower() for x in ["log ud", "logout", "/logout"])
     if not ok:
-        raise RuntimeError("Login failed")
+        raise RuntimeError("Login failed. Check credentials or additional protections.")
 
-def absolutize(href): return urljoin(BASE, href) if href else None
-def norm_time(s):
+# ---------- Parsing helpers ----------
+def absolutize(href: str) -> str | None:
+    return urljoin(BASE, href) if href else None
+
+def norm_time(s: str) -> str:
     if not s: return ""
     m = re.search(r"(\d{1,2}):(\d{2})", str(s))
     return m.group(1) if m else str(s).strip()
-def norm_date(s):
+
+def norm_date(s: str) -> str:
     if not s: return ""
     try:
         dt = dateparser.parse(str(s), dayfirst=True, fuzzy=True)
         return dt.strftime("%Y-%m-%d")
     except Exception:
         return ""
-def to_int(s):
+
+def to_int(s) -> int:
     if s is None: return 0
     m = re.search(r"\d+", str(s))
     return int(m.group(0)) if m else 0
 
-def parse_table(soup):
+def parse_table(soup: BeautifulSoup) -> list[dict]:
     out = []
     for table in soup.select("table"):
-        head_cells = table.find_all("th") or (table.find("tr").find_all("td") if table.find("tr") else [])
+        head_cells = table.find_all("th")
+        if not head_cells:
+            tr0 = table.find("tr")
+            head_cells = tr0.find_all("td") if tr0 else []
         header = [c.get_text(" ", strip=True) for c in head_cells]
         hl = [h.lower() for h in header]
-        if not header: continue
+        if not header: 
+            continue
         hits = sum(kw in " ".join(hl) for kw in ["navn","dato","klokkesl","tid","vagter","reserverede"])
-        if hits < 2: continue
+        if hits < 2:
+            continue
 
-        def idx_of(keys):
+        def idx_of(keys: list[str]) -> int:
             for k in keys:
                 if k in hl: return hl.index(k)
             return -1
@@ -100,7 +122,8 @@ def parse_table(soup):
 
         for tr in table.find_all("tr"):
             tds = tr.find_all("td")
-            if not tds: continue
+            if not tds: 
+                continue
             cells_text = [td.get_text(" ", strip=True) for td in tds]
             url, title = None, ""
             if 0 <= idx_navn < len(tds):
@@ -127,30 +150,35 @@ def parse_table(soup):
             })
     return out
 
-def parse_pipe_lines(soup):
+def parse_pipe_lines(soup: BeautifulSoup) -> list[dict]:
     out, texts = [], []
     for node in soup.find_all(string=True):
         s = str(node).strip()
-        if "|" in s and len(s) > 10: texts.append(s)
+        if "|" in s and len(s) > 10:
+            texts.append(s)
 
     header = None
     for s in texts:
         cells = [c.strip() for c in re.sub(r"\s*\|\s*", "|", s).split("|")]
         if len(cells) >= 5 and cells[0].lower() == "navn":
-            header = cells; break
+            header = cells
+            break
 
-    def parse_values(line):
+    def parse_values(line: str) -> dict | None:
         cells = [c.strip() for c in re.sub(r"\s*\|\s*", "|", line).split("|")]
-        if len(cells) < 2 or cells[0].lower() == "navn": return None
+        if len(cells) < 2 or cells[0].lower() == "navn":
+            return None
         if header:
             head = header[:len(cells)]
             return dict(zip(head, cells))
-        if len(cells) < len(ORDER): cells += [""]*(len(ORDER)-len(cells))
+        if len(cells) < len(ORDER):
+            cells += [""]*(len(ORDER) - len(cells))
         return dict(zip(ORDER, cells[:len(ORDER)]))
 
     for s in texts:
         d = parse_values(s)
-        if not d: continue
+        if not d:
+            continue
         out.append({
             "Navn": d.get("Navn","").strip(),
             "Dato": norm_date(d.get("Dato","")),
@@ -161,7 +189,7 @@ def parse_pipe_lines(soup):
         })
     return out
 
-def attach_urls_by_title(items, soup):
+def attach_urls_by_title(items: list[dict], soup: BeautifulSoup) -> None:
     anchors = soup.find_all("a", href=True)
     index = {}
     for a in anchors:
@@ -172,37 +200,43 @@ def attach_urls_by_title(items, soup):
     for it in items:
         if not it.get("URL"):
             href = index.get(it["Navn"].lower())
-            if href: it["URL"] = href
+            if href:
+                it["URL"] = href
 
-def find_next_page(soup):
+def find_next_page(soup: BeautifulSoup) -> str | None:
     a = soup.find("a", rel=lambda v: v and "next" in v)
-    if a and a.has_attr("href"): return absolutize(a["href"])
+    if a and a.has_attr("href"):
+        return absolutize(a["href"])
     for txt in ["Næste","Naeste","Next","›",">>"]:
         link = soup.find("a", string=lambda s: s and txt.lower() in s.lower())
-        if link and link.has_attr("href"): return absolutize(link["href"])
+        if link and link.has_attr("href"):
+            return absolutize(link["href"])
     link = soup.select_one(".pagination .next a, a.next")
     return absolutize(link["href"]) if link and link.has_attr("href") else None
 
-def crawl_location(session, start_url, max_pages=5):
+def crawl_location(session: requests.Session, start_url: str, max_pages: int = 5) -> list[dict]:
     url, seen, rows = start_url, set(), []
     while url and url not in seen and len(seen) < max_pages:
         seen.add(url)
         r = session.get(url, timeout=20)
-        if r.status_code != 200: break
+        if r.status_code != 200:
+            break
         soup = BeautifulSoup(r.text, "html.parser")
         batch = parse_table(soup)
         if not batch:
             batch = parse_pipe_lines(soup)
-            if batch: attach_urls_by_title(batch, soup)
+            if batch:
+                attach_urls_by_title(batch, soup)
         existing = {(x.get("URL"), x.get("Navn","").lower()) for x in rows}
         for it in batch:
             key = (it.get("URL"), it.get("Navn","").lower())
-            if key not in existing: rows.append(it)
+            if key not in existing:
+                rows.append(it)
         url = find_next_page(soup)
         time.sleep(0.6)
     return rows
 
-# ---------- ICS (local times with TZID=Europe/Copenhagen + VTIMEZONE) ----------
+# ---------- ICS (local times with TZID + VTIMEZONE) ----------
 VTIMEZONE_EUROPE_CPH = """BEGIN:VTIMEZONE
 TZID:Europe/Copenhagen
 X-LIC-LOCATION:Europe/Copenhagen
@@ -236,7 +270,7 @@ def ics_escape(text: str) -> str:
     if text is None: return ""
     return str(text).replace("\\","\\\\").replace("\n","\\n").replace(",","\\,").replace(";","\\;")
 
-def parse_dt_local(date_str: str, time_str: str):
+def parse_dt_local(date_str: str, time_str: str) -> datetime | None:
     if not date_str: return None
     try:
         d = dateparser.parse(date_str, dayfirst=True, fuzzy=True).date()
@@ -244,14 +278,13 @@ def parse_dt_local(date_str: str, time_str: str):
         return None
     m = re.search(r"(\d{1,2}):(\d{2})", time_str or "")
     hh, mm = (int(m.group(1)), int(m.group(2))) if m else (18, 0)  # default 18:00
-    # Local "clock" time; DO NOT append 'Z'
-    return f"{d.year:04d}{d.month:02d}{d.day:02d}T{hh:02d}{mm:02d}00"
+    return datetime(d.year, d.month, d.day, hh, mm)
 
-def uid_for(it: dict, slug: str):
+def uid_for(it: dict, slug: str) -> str:
     key = (slug + "|" + it.get("URL","") + "|" + it.get("Navn","") + "|" + it.get("Dato","") + "|" + it.get("Klokkeslæt","")).encode("utf-8")
     return "unf-" + hashlib.sha1(key).hexdigest() + "@unf"
 
-def rows_to_ics(rows, out_path: str, calname: str):
+def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
     now = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     lines = [
         "BEGIN:VCALENDAR",
@@ -262,40 +295,32 @@ def rows_to_ics(rows, out_path: str, calname: str):
         f"X-WR-CALNAME:{ics_escape(calname)}",
         "X-WR-TIMEZONE:Europe/Copenhagen",
     ]
-    # Add VTIMEZONE for Europe/Copenhagen (per RFC 5545 requirement when using TZID)
+    # Add VTIMEZONE for Europe/Copenhagen (required when using TZID)
     lines += [ln for ln in VTIMEZONE_EUROPE_CPH.splitlines()]
 
     for it in rows:
-        dtstart_local = parse_dt_local(it.get("Dato",""), it.get("Klokkeslæt",""))
-        if not dtstart_local: continue
-        # default 2h duration
-        # write local DTSTART/DTEND with TZID param
-        # NOTE: no trailing 'Z'
-        # End = start + 2h -> compute as text: parse back hours
-        hh = int(dtstart_local[9:11]); mm = int(dtstart_local[11:13])
-        end_hh = (hh + 2) % 24
-        carry = 1 if hh + 2 >= 24 else 0
-        end_date = dtstart_local[:8]
-        if carry:
-            # naive +1 day (good enough for our use case)
-            from datetime import date, timedelta as td
-            y, m, d = int(end_date[:4]), int(end_date[4:6]), int(end_date[6:8])
-            end_date = (date(y,m,d) + td(days=1)).strftime("%Y%m%d")
-        dtend_local = f"{end_date}T{end_hh:02d}{mm:02d}00"
+        start_local = parse_dt_local(it.get("Dato",""), it.get("Klokkeslæt",""))
+        if not start_local:
+            continue
+        end_local = start_local + timedelta(hours=2)  # default duration 2h
+
+        def fmt_local(dt: datetime) -> str:
+            return dt.strftime("%Y%m%dT%H%M%S")  # no trailing 'Z', TZID specified on property
 
         desc = [
             f"Vagter: {int(it.get('Vagter',0))}",
             f"Reserverede: {int(it.get('Reserverede',0))}",
         ]
-        if it.get("URL"): desc.append(f"URL: {it['URL']}")
+        if it.get("URL"):
+            desc.append(f"URL: {it['URL']}")
         description = "\\n".join(ics_escape(p) for p in desc)
 
         evt = [
             "BEGIN:VEVENT",
             f"UID:{uid_for(it, calname)}",
             f"DTSTAMP:{now}",
-            f"DTSTART;TZID=Europe/Copenhagen:{dtstart_local}",
-            f"DTEND;TZID=Europe/Copenhagen:{dtend_local}",
+            f"DTSTART;TZID=Europe/Copenhagen:{fmt_local(start_local)}",
+            f"DTEND;TZID=Europe/Copenhagen:{fmt_local(end_local)}",
             f"SUMMARY:{ics_escape(it.get('Navn',''))}",
         ]
         if it.get("URL"):
@@ -311,7 +336,8 @@ def rows_to_ics(rows, out_path: str, calname: str):
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
 
-def run_once(out_dir: str, max_pages: int):
+# ---------- Orchestration ----------
+def run_once(out_dir: str, max_pages: int) -> None:
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Python-Requests",
