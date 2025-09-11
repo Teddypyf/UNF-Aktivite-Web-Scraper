@@ -1,0 +1,57 @@
+name: Build & Publish UNF ICS (KBH & Lyngby)
+
+on:
+  schedule:
+    # 每6小时（UTC）跑一次；可按需调整
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 python-dateutil
+
+      - name: Generate ICS feeds
+        env:
+          UNF_USER: ${{ secrets.UNF_USER }}
+          UNF_PASS: ${{ secrets.UNF_PASS }}
+        run: |
+          python unf_events_to_ics.py --out-dir dist --pages 5
+          ls -lah dist
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
