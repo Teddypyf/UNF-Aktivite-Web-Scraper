@@ -48,6 +48,7 @@ jobs:
           dt=$(date "+%Y-%m-%d %H:%M:%S")
           sed -i "s/最后更新时间:<span id=\"last-update\">.*<\\/span>/最后更新时间:<span id=\"last-update\">$dt<\\/span>/" index.html
           cp index.html dist/
+          
       - name: Generate ICS feeds (KBH & Lyngby)
         env:
           UNF_USER: ${{ secrets.UNF_USER }}
