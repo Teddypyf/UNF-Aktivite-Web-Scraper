@@ -2,7 +2,7 @@
 <html lang="zh-cn">
 <head>
     <meta charset="UTF-8">
-    <title>部署状态</title>
+    <title>Last Update Time</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         .update-time { font-size: 1.5em; color: #2d8cf0; }
@@ -11,8 +11,8 @@
 <body>
         <h1>UNF-Aktivite</h1>
         <div class="update-time" id="update-time">
-                <span id="last-update-utc">UTC: 尚未更新</span><br>
-                <span id="last-update-local">本地: 尚未更新</span>
+            <span id="last-update-utc">UTC: null</span><br>
+            <span id="last-update-local">Local: null</span>
         </div>
         <script>
             // 获取页面中的 UTC 时间(由 workflow 写入)
@@ -21,12 +21,18 @@
             const localSpan = document.getElementById('last-update-local');
             // 这里假设 workflow 会写入 UTC 时间到 UTC span
             // 如果页面初始为"尚未更新",则不处理
-            let utcText = utcSpan.textContent;
-            let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
-            if (match) {
-                let utcDate = new Date(match[1] + ' UTC');
-                localSpan.textContent = '本地: ' + utcDate.toLocaleString();
-            }
+                        let utcText = utcSpan.textContent;
+                        let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+                        if (match) {
+                                let utcDate = new Date(match[1] + ' UTC');
+                                // 格式化为 yyyy-MM-dd HH:mm:ss
+                                function pad(n) { return n < 10 ? '0' + n : n; }
+                                function formatDate(d) {
+                                    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+                                }
+                                utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
+                                localSpan.textContent = 'Local: ' + formatDate(new Date(utcDate.getTime() + utcDate.getTimezoneOffset()*60000*(-1)));
+                        }
         </script>
 </body>
 </html>
