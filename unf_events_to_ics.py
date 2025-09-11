@@ -25,8 +25,8 @@ LOCATIONS = {
 }
 ORDER = ["Navn","Dato","Ugedag","Klokkeslæt","Vagter","Reserverede","Pladser","Deltagere","Ekstern/Intern"]
 
-DEFAULT_USERNAME = "TPPE"
-DEFAULT_PASSWORD = "123123"
+DEFAULT_USERNAME = ""
+DEFAULT_PASSWORD = ""
 
 # ---------- Credentials (CI-safe) ----------
 def prompt_credentials():
