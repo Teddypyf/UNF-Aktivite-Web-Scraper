@@ -38,15 +38,16 @@ jobs:
           UNF_PASS: ${{ secrets.UNF_PASS }}
         run: |
           if [ -z "${UNF_USER}" ] || [ -z "${UNF_PASS}" ]; then
-            echo "Missing UNF_USER/UNF_PASS secrets."; exit 1;
+            echo "Missing UNF_USER/UNF_PASS secrets."
+            exit 1
           fi
 
-          - name: Update index.html with last update time
-            run: |
-              mkdir -p dist
-              dt=$(date "+%Y-%m-%d %H:%M:%S")
-              sed -i "s/最后更新时间:<span id=\"last-update\">.*<\\/span>/最后更新时间:<span id=\"last-update\">$dt<\\/span>/" index.html
-              cp index.html dist/
+      - name: Update index.html with last update time
+        run: |
+          mkdir -p dist
+          dt=$(date "+%Y-%m-%d %H:%M:%S")
+          sed -i "s/最后更新时间:<span id=\"last-update\">.*<\\/span>/最后更新时间:<span id=\"last-update\">$dt<\\/span>/" index.html
+          cp index.html dist/
       - name: Generate ICS feeds (KBH & Lyngby)
         env:
           UNF_USER: ${{ secrets.UNF_USER }}
