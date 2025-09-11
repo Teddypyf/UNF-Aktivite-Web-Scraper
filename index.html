@@ -9,9 +9,25 @@
     </style>
 </head>
 <body>
-    <h1>UNF-Aktivite 部署状态</h1>
-    <div class="update-time" id="update-time">
-        最后更新时间:<span id="last-update">尚未更新</span>
-    </div>
+        <h1>UNF-Aktivite 部署状态</h1>
+        <div class="update-time" id="update-time">
+                最后更新时间:
+                <span id="last-update-utc">UTC: 尚未更新</span><br>
+                <span id="last-update-local">本地: 尚未更新</span>
+        </div>
+        <script>
+            // 获取页面中的 UTC 时间(由 workflow 写入)
+            // 假设 sed 替换的是 UTC 时间
+            const utcSpan = document.getElementById('last-update-utc');
+            const localSpan = document.getElementById('last-update-local');
+            // 这里假设 workflow 会写入 UTC 时间到 UTC span
+            // 如果页面初始为"尚未更新",则不处理
+            let utcText = utcSpan.textContent;
+            let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+            if (match) {
+                let utcDate = new Date(match[1] + ' UTC');
+                localSpan.textContent = '本地: ' + utcDate.toLocaleString();
+            }
+        </script>
 </body>
 </html>
