@@ -1,8 +1,8 @@
-- name: Update index.html with last update time
-  run: |
-    mkdir -p dist
-    dt=$(date "+%Y-%m-%d %H:%M:%S")
-    sed -i "s/最后更新时间:<span id=\"last-update\">.*<\\/span>/最后更新时间:<span id
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <title>部署状态</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         .update-time { font-size: 1.5em; color: #2d8cf0; }
@@ -11,7 +11,7 @@
 <body>
     <h1>UNF-Aktivite 部署状态</h1>
     <div class="update-time" id="update-time">
-        最后更新时间：<span id="last-update">尚未更新</span>
+        最后更新时间:<span id="last-update">尚未更新</span>
     </div>
 </body>
 </html>

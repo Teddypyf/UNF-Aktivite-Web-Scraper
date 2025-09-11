@@ -1,9 +1,9 @@
 name: Build & Publish UNF ICS (KBH & Lyngby)
 
 on:
+  workflow_dispatch: {}
   schedule:
     - cron: "0 1,6,11,14,16,20 * * *"  # UTC: 01:00, 06:00, 11:00, 14:00, 16:00, 20:00
-  workflow_dispatch: {}
 
 permissions:
   contents: read
