@@ -1,6 +1,6 @@
 # UNF Aktivite Web Scraper
 
-本项目用于自动抓取 UNF KBH 和 Lyngby 活动信息,并生成带有欧洲哥本哈根时区的 ICS 日历文件.支持本地运行和 GitHub Actions 自动化发布.
+本项目用于自动抓取 UNF KBH 和 Lyngby 活动信息,并生成带有欧洲哥本哈根时区的 ICS 日历文件.支持 GitHub Actions 自动化发布.
 
 ## 功能简介
 
