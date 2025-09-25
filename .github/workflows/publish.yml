@@ -22,8 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ICS_PAGES: 4  # 可调:抓取页面数,减少可加速
-    outputs:
-      skip_deploy: ${{ steps.decide-skip.outputs.skip_deploy }}
     steps:
       - name: Show trigger type and run time
         run: |
@@ -82,50 +80,7 @@ jobs:
           python unf_events_to_ics.py --out-dir dist --pages "$ICS_PAGES"
           ls -lah dist
 
-      - name: Decide skip (hash compare with currently published)
-        id: decide-skip
-        run: |
-          set -e
-          set -o pipefail
-          # 组合新生成 ICS 的内容哈希(按文件名排序保证稳定)
-          FILES=$(find dist -maxdepth 1 -type f -name '*.ics' | sort)
-          if [ -z "$FILES" ]; then
-            echo "No ICS files generated – treat as changed (force deploy)." >&2
-            echo "skip_deploy=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          NEW_HASH=$(for f in $FILES; do sha256sum "$f"; done | awk '{print $1}' | tr -d '\n' | sha256sum | awk '{print $1}')
-          echo "New combined hash: $NEW_HASH"
-          BASE_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
-          # 抓取已发布(若存在)对应 ICS 文件内容
-          REMOTE_TMP="remote_ics_concat.tmp"
-          touch "$REMOTE_TMP"
-          MISSING=0
-          for f in $FILES; do
-            name=$(basename "$f")
-            url="$BASE_URL/$name"
-            echo "Fetching $url" >&2
-            if ! curl -fsSL "$url" >> "$REMOTE_TMP" 2>/dev/null; then
-              echo "Remote file missing: $url (treat as changed)" >&2
-              MISSING=1
-              break
-            fi
-          done
-          if [ $MISSING -eq 0 ]; then
-            OLD_HASH=$(sha256sum "$REMOTE_TMP" | awk '{print $1}')
-            echo "Old combined hash: $OLD_HASH"
-            if [ "$OLD_HASH" = "$NEW_HASH" ]; then
-              echo "ICS 内容无变化,标记跳过后续部署."
-              echo "skip_deploy=true" >> $GITHUB_OUTPUT
-            else
-              echo "skip_deploy=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "skip_deploy=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Update index.html (time + file list)
-        if: steps.decide-skip.outputs.skip_deploy != 'true'
         run: |
           set -e
           dt=$(date -u "+%Y-%m-%d %H:%M:%S")
@@ -149,14 +104,12 @@ jobs:
           cp index.html dist/
 
       - name: Upload Pages artifact
-        if: steps.decide-skip.outputs.skip_deploy != 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
     needs: build
-    if: needs.build.outputs.skip_deploy != 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

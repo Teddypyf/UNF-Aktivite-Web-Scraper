@@ -9,7 +9,8 @@ Env (in CI via GitHub Actions Secrets):
 Usage (local):
   python unf_events_to_ics.py --out-dir dist --pages 5
 """
-import os, sys, re, time, getpass, argparse, hashlib
+import os, sys, re, time, getpass, argparse, hashlib, threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
 
@@ -218,26 +219,35 @@ def find_next_page(soup: BeautifulSoup) -> str | None:
     link = soup.select_one(".pagination .next a, a.next")
     return absolutize(link["href"]) if link and link.has_attr("href") else None
 
-def crawl_location(session: requests.Session, start_url: str, max_pages: int = 5) -> list[dict]:
+def crawl_location(session: requests.Session, start_url: str, max_pages: int = 5, fetch=None, delay: float = 0.4) -> list[dict]:
+    """Crawl a single location, optionally using a provided fetch(url)->soup function
+    with basic dedupe across pages. delay is a polite sleep between page fetches
+    (per thread) to avoid hammering the server."""
     url, seen, rows = start_url, set(), []
     while url and url not in seen and len(seen) < max_pages:
         seen.add(url)
-        r = session.get(url, timeout=20)
-        if r.status_code != 200:
-            break
-        soup = BeautifulSoup(r.text, "html.parser")
+        if fetch:
+            soup = fetch(url)
+            if soup is None:
+                break
+        else:
+            r = session.get(url, timeout=20)
+            if r.status_code != 200:
+                break
+            soup = BeautifulSoup(r.text, "html.parser")
         batch = parse_table(soup)
         if not batch:
             batch = parse_pipe_lines(soup)
             if batch:
                 attach_urls_by_title(batch, soup)
-        existing = {(x.get("URL"), x.get("Navn","").lower()) for x in rows}
+        existing = {(x.get("URL"), x.get("Navn","" ).lower()) for x in rows}
         for it in batch:
-            key = (it.get("URL"), it.get("Navn","").lower())
+            key = (it.get("URL"), it.get("Navn","" ).lower())
             if key not in existing:
                 rows.append(it)
         url = find_next_page(soup)
-        time.sleep(0.6)
+        if url:
+            time.sleep(delay)
     return rows
 
 # ---------- ICS (local times with TZID + VTIMEZONE) ----------
@@ -342,33 +352,95 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
         f.write(content)
 
 # ---------- Orchestration ----------
-def run_once(out_dir: str, max_pages: int) -> None:
-    session = requests.Session()
-    session.headers.update({
+def run_once(out_dir: str, max_pages: int, workers: int, cache_ttl: int) -> None:
+    base_session = requests.Session()
+    base_session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Python-Requests",
         "Accept-Language": "en,da;q=0.9",
     })
     user, pwd = prompt_credentials()
-    login(session, user, pwd)
+    login(base_session, user, pwd)
 
+    # Simple in-memory cache {url: (fetched_time, text)} shared across threads
+    cache_lock = threading.Lock()
+    page_cache: dict[str, tuple[float, str]] = {}
+
+    def make_thread_session() -> requests.Session:
+        # Clone headers + cookies for thread safety (requests.Session isn't strictly thread-safe)
+        s = requests.Session()
+        s.headers.update(base_session.headers)
+        for c in base_session.cookies:
+            s.cookies.set(c.name, c.value, domain=c.domain, path=c.path)
+        return s
+
+    def fetch_factory(session: requests.Session):
+        def fetch(url: str):
+            now = time.time()
+            if cache_ttl > 0:
+                with cache_lock:
+                    hit = page_cache.get(url)
+                    if hit and (now - hit[0]) <= cache_ttl:
+                        return BeautifulSoup(hit[1], "html.parser")
+            try:
+                r = session.get(url, timeout=20)
+            except Exception as e:
+                print(f"[WARN] fetch error {url}: {e}")
+                return None
+            if r.status_code != 200:
+                print(f"[WARN] non-200 {r.status_code} for {url}")
+                return None
+            text = r.text
+            if cache_ttl > 0:
+                with cache_lock:
+                    page_cache[url] = (now, text)
+            return BeautifulSoup(text, "html.parser")
+        return fetch
+
+    tasks = {}
+    results: dict[str, list[dict]] = {}
+    slugs = list(LOCATIONS.keys())
+    if workers <= 0:
+        workers = 1
+    workers = min(max(1, workers), len(slugs))
+    print(f"[INFO] Parallel crawl workers={workers}, max_pages={max_pages}, cache_ttl={cache_ttl}s")
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        for slug, path in LOCATIONS.items():
+            start_url = urljoin(BASE, path)
+            sess = make_thread_session() if workers > 1 else base_session
+            fetch = fetch_factory(sess)
+            fut = executor.submit(crawl_location, sess, start_url, max_pages, fetch)
+            tasks[fut] = slug
+        for fut in as_completed(tasks):
+            slug = tasks[fut]
+            try:
+                rows = fut.result()
+            except Exception as e:
+                print(f"[ERROR] crawl failed for {slug}: {e}")
+                rows = []
+            results[slug] = rows
+            print(f"[INFO] {slug}: {len(rows)} events")
+
+    # Write ICS sequentially for deterministic ordering
     ics_files = []
-    for slug, path in LOCATIONS.items():
-        start_url = urljoin(BASE, path)
-        rows = crawl_location(session, start_url, max_pages=max_pages)
+    for slug in slugs:
+        rows = results.get(slug, [])
         out_path = os.path.join(out_dir, f"unf_events_{slug}.ics")
         calname = f"UNF {slug.upper()} Events"
         rows_to_ics(rows, out_path, calname)
         print(f"[{slug}] Saved {len(rows)} events -> {out_path}")
         ics_files.append(out_path)
-    # 输出所有生成的ics文件名,方便后续自动插入到html
+
     print("ICS_FILES:" + ",".join(ics_files))
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", default="dist", help="Output directory for ICS files")
     ap.add_argument("--pages", type=int, default=5, help="Max pages to crawl per location")
+    ap.add_argument("--workers", type=int, default=3, help="并行抓取线程数 (建议 1-4)")
+    ap.add_argument("--cache-ttl", type=int, default=int(os.getenv("UNF_CACHE_TTL", "0")), help="页面缓存秒数 (内存缓存, 0=关闭)")
     args = ap.parse_args()
-    run_once(args.out_dir, args.pages)
+    run_once(args.out_dir, args.pages, args.workers, args.cache_ttl)
 
 if __name__ == "__main__":
     main()
