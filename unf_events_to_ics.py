@@ -16,7 +16,6 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
-   // 动态插入ICS订阅链接,文件名与Pyth
 BASE = "https://frivillig.unf.dk"
 LOGIN_URL = "https://frivillig.unf.dk/login/?next=/events/kbh/"
 LOCATIONS = {
@@ -373,7 +372,7 @@ def run_once(out_dir: str, max_pages: int) -> None:
         rows_to_ics(rows, out_path, calname)
         print(f"[{slug}] Saved {len(rows)} events -> {out_path}")
         ics_files.append(out_path)
-    # 输出所有生成的ics文件名，方便后续自动插入到html
+    # 输出所有生成的ics文件名,方便后续自动插入到html
     print("ICS_FILES:" + ",".join(ics_files))
 
 def main():
