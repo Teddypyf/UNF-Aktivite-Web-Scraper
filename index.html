@@ -1,4 +1,4 @@
-<html lang="zh-cn">
+更新 index.html 中的 baseUrl,以修正 ICS 文件链接地址
     <head>
         <meta charset="UTF-8" />
         <title>Last Update Time</title>
@@ -44,7 +44,7 @@
             icsFiles.forEach((f, i) => {
                 const fname = `unf_events_${f.slug}.ics`;
                 html += `<label for="ics-link${i}">${f.name}:</label>`;
-                html += `<input id="ics-link${i}" type="text" value="${baseUrl}${fname}" readonly style="width:400px;" onclick="this.select()" /><br />`;
+                html += `<input id="ics-link${i}" type="text" value="${baseUrl}${fname}" readonly style="width:500px;" onclick="this.select()" /><br />`;
             });
             document.getElementById('ics-links').innerHTML = html;
         </script>
