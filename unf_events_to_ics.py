@@ -16,12 +16,16 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
-
+   // 动态插入ICS订阅链接,文件名与Pyth
 BASE = "https://frivillig.unf.dk"
 LOGIN_URL = "https://frivillig.unf.dk/login/?next=/events/kbh/"
 LOCATIONS = {
     "kbh":    "/events/kbh/",
     "lyngby": "/events/lyngby/",
+    "aalborg":"/events/aalborg/",
+    "aarhus": "/events/aarhus/",
+    "danmark":"/events/danmark/",
+    "odense": "/events/odense/",
 }
 ORDER = ["Navn","Dato","Ugedag","Klokkeslæt","Vagter","Reserverede","Pladser","Deltagere","Ekstern/Intern"]
 
@@ -360,6 +364,7 @@ def run_once(out_dir: str, max_pages: int) -> None:
     user, pwd = prompt_credentials()
     login(session, user, pwd)
 
+    ics_files = []
     for slug, path in LOCATIONS.items():
         start_url = urljoin(BASE, path)
         rows = crawl_location(session, start_url, max_pages=max_pages)
@@ -367,6 +372,9 @@ def run_once(out_dir: str, max_pages: int) -> None:
         calname = f"UNF {slug.upper()} Events"
         rows_to_ics(rows, out_path, calname)
         print(f"[{slug}] Saved {len(rows)} events -> {out_path}")
+        ics_files.append(out_path)
+    # 输出所有生成的ics文件名，方便后续自动插入到html
+    print("ICS_FILES:" + ",".join(ics_files))
 
 def main():
     ap = argparse.ArgumentParser()
