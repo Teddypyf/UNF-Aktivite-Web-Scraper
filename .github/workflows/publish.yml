@@ -2,9 +2,6 @@ name: UNF activity scraper and publish
 
 on:
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
   schedule:
     - cron: "10 6,10,14,20 * * *"  # UTC: 01:10, 06:10, 11:10, 14:10, 16:10, 20:10
 

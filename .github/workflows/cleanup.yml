@@ -1,0 +1,154 @@
+name: Cleanup Old Workflow Runs
+
+on:
+  schedule:
+    - cron: '15 23 * * *'  # 每日 23:15 UTC
+  workflow_dispatch:
+    inputs:
+      hours_threshold:
+        description: '删除运行的年龄阈值(小时) (默认24)'
+        required: false
+        default: '24'
+      min_keep:
+        description: '至少保留最近的完成运行数(默认3)'
+        required: false
+        default: '3'
+      dry_run:
+        description: '只演示不真正删除 (true/false)'
+        required: false
+        default: 'false'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      HOURS_THRESHOLD: ${{ inputs.hours_threshold || '24' }}
+      MIN_KEEP: ${{ inputs.min_keep || '3' }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+    steps:
+      - name: Show configuration
+        run: |
+          echo "HOURS_THRESHOLD=$HOURS_THRESHOLD"
+          echo "MIN_KEEP=$MIN_KEEP"
+          echo "DRY_RUN=$DRY_RUN"
+
+      - name: Cleanup runs
+        id: do_cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO='${{ github.repository }}'
+          OWNER='${REPO%%/*}'
+          NAME='${REPO##*/}'
+          NOW_EPOCH=$(date -u +%s)
+          CUTOFF_EPOCH=$(( NOW_EPOCH - (HOURS_THRESHOLD*3600) ))
+
+          echo "Now: $(date -u --date=@$NOW_EPOCH)  Cutoff(epoch=$CUTOFF_EPOCH)"
+
+          page=1
+          PER_PAGE=100
+          max_pages=10
+          all_json="[]"
+
+          # 累积 workflow runs
+          while [ $page -le $max_pages ]; do
+            echo "Fetch page $page" >&2
+            resp=$(curl -sf -H 'Accept: application/vnd.github+json' \ 
+              "https://api.github.com/repos/$REPO/actions/runs?per_page=$PER_PAGE&page=$page") || break
+            runs=$(echo "$resp" | jq '.workflow_runs')
+            count=$(echo "$runs" | jq 'length')
+            if [ "$count" = "0" ]; then
+              break
+            fi
+            all_json=$(jq -c --argjson new "$runs" '. + $new' <<< "$all_json")
+            page=$((page+1))
+          done
+
+          total=$(echo "$all_json" | jq 'length')
+          echo "Total fetched runs: $total"
+
+          # 提取必要信息并按 run_number 降序(最近的在前)
+          ordered=$(echo "$all_json" | jq 'sort_by(.run_number) | reverse')
+
+          # 保护最近的已完成运行 (MIN_KEEP)
+          protect_ids=$(echo "$ordered" | jq -r --argjson keep "$MIN_KEEP" 'map(select(.status=="completed")) | .[:$keep] | map(.id) | @sh')
+          echo "Protected (latest completed) run ids: $protect_ids"
+
+          current_run_id='${{ github.run_id }}'
+
+          # 分类统计初始化
+          deleted=0
+          protected=0
+          young=0
+          older_candidates=0
+          skipped_current=0
+          errors=0
+
+          # 构建受保护集合
+          declare -A PROTECT
+          for pid in $(echo $protect_ids | tr -d "'" ); do
+            PROTECT[$pid]=1
+          done
+          PROTECT[$current_run_id]=1
+
+          # 迭代删除
+          echo "$ordered" | jq -c '.[]' | while read -r row; do
+            id=$(jq -r '.id' <<<"$row")
+            run_number=$(jq -r '.run_number' <<<"$row")
+            status=$(jq -r '.status' <<<"$row")
+            conclusion=$(jq -r '.conclusion' <<<"$row")
+            created=$(jq -r '.created_at' <<<"$row")
+            created_epoch=$(date -u -d "$created" +%s || echo 0)
+
+            # 年龄判断
+            if [ $created_epoch -ge $CUTOFF_EPOCH ]; then
+              young=$((young+1))
+              continue
+            fi
+
+            # 非 completed 不删
+            if [ "$status" != "completed" ]; then
+              continue
+            fi
+
+            # 保护集合
+            if [ "${PROTECT[$id]:-0}" = 1 ]; then
+              protected=$((protected+1))
+              continue
+            fi
+
+            # 年龄超阈值才删除
+            if [ $created_epoch -lt $CUTOFF_EPOCH ]; then
+              older_candidates=$((older_candidates+1))
+              if [ "$id" = "$current_run_id" ]; then
+                skipped_current=$((skipped_current+1))
+                continue
+              fi
+              echo "Delete run_number=$run_number id=$id (age_sec=$((NOW_EPOCH-created_epoch)) status=$status concl=$conclusion)"
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "(dry-run) skipped actual deletion"
+              else
+                if curl -sf -X DELETE -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$REPO/actions/runs/$id" >/dev/null; then
+                  deleted=$((deleted+1))
+                else
+                  echo "ERROR deleting id=$id" >&2
+                  errors=$((errors+1))
+                fi
+                sleep 0.25
+              fi
+            fi
+          done
+
+          echo "----- Summary -----"
+          echo "Protected recent completed: $protected"
+          echo "Deleted old (age > $HOURS_THRESHOLD h): $deleted"
+          echo "Young (age <= threshold & not legacy): $young"
+          echo "Older candidates processed: $older_candidates"  # includes legacy set also
+          echo "Skipped current run: $skipped_current"
+          echo "Errors: $errors"
+
+          echo "deleted_old=$deleted" >> $GITHUB_OUTPUT
