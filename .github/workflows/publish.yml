@@ -61,12 +61,12 @@ jobs:
             exit 1
           fi
           
-      - name: Generate ICS feeds (KBH & Lyngby)
+      - name: Generate ICS & CSV feeds
         env:
           UNF_USER: ${{ secrets.UNF_USER }}
           UNF_PASS: ${{ secrets.UNF_PASS }}
         run: |
-          python unf_events_to_ics.py --out-dir dist --pages 5
+          python unf_events_to_ics.py --out-dir dist --pages 5 --csv
           ls -lah dist
 
       - name: Update index.html (time + file list)
