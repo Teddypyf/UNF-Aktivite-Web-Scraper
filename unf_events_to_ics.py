@@ -140,6 +140,13 @@ def parse_table(soup: BeautifulSoup) -> list[dict]:
             vagt = cells_text[idx_vagt] if 0 <= idx_vagt < len(cells_text) else ""
             res  = cells_text[idx_res]  if 0 <= idx_res  < len(cells_text) else ""
 
+            # 检查是否取消
+            tr_class = tr.get("class", [])
+            is_cancelled = any(
+                "rowexternal" in c.lower() and "danger" in c.lower() and ("footable-even" in c.lower() or "footable-odd" in c.lower())
+                for c in tr_class
+            )
+
             out.append({
                 "Navn": (title or "").strip(),
                 "Dato": norm_date(dato),
@@ -147,6 +154,7 @@ def parse_table(soup: BeautifulSoup) -> list[dict]:
                 "Vagter": to_int(vagt),
                 "Reserverede": to_int(res),
                 "URL": (url or "").strip(),
+                "Cancelled": is_cancelled,
             })
     return out
 
@@ -313,6 +321,8 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
         ]
         if it.get("URL"):
             desc.append(f"URL: {it['URL']}")
+        if it.get("Cancelled"):
+            desc.append("[已取消]")
         description = "\\n".join(ics_escape(p) for p in desc)
 
         evt = [
@@ -327,7 +337,11 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
             evt.append(f"URL:{ics_escape(it['URL'])}")
         if description:
             evt.append(f"DESCRIPTION:{description}")
-        evt += ["STATUS:CONFIRMED","TRANSP:OPAQUE","END:VEVENT"]
+        if it.get("Cancelled"):
+            evt.append("STATUS:CANCELLED")
+        else:
+            evt.append("STATUS:CONFIRMED")
+        evt += ["TRANSP:OPAQUE","END:VEVENT"]
         lines += [fold_ical_line(e) for e in evt]
 
     lines.append("END:VCALENDAR")
