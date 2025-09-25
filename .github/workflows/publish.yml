@@ -60,13 +60,13 @@ jobs:
             echo "Missing UNF_USER/UNF_PASS secrets."
             exit 1
           fi
-          
-      - name: Generate ICS & CSV feeds
+
+      - name: Generate ICS feeds
         env:
           UNF_USER: ${{ secrets.UNF_USER }}
           UNF_PASS: ${{ secrets.UNF_PASS }}
         run: |
-          python unf_events_to_ics.py --out-dir dist --pages 5 --csv
+          python unf_events_to_ics.py --out-dir dist --pages 5
           ls -lah dist
 
       - name: Update index.html (time + file list)

@@ -29,8 +29,6 @@
             <!-- FILE_LIST_END -->
         </div>
 
-        <h2>事件调试视图 (CSV)</h2>
-        <div id="csv-view" style="max-width:100%;overflow:auto;"></div>
 
         <script>
             // 动态插入 ICS 订阅链接, 文件名与 Python 同步
@@ -50,48 +48,6 @@
                 html += `<input id="ics-link${i}" type="text" value="${baseUrl}${fname}" readonly style="width:500px;" onclick="this.select()" /><br />`;
             });
             document.getElementById('ics-links').innerHTML = html;
-        </script>
-        <script>
-            // 渲染 CSV (combined) 如果存在
-            async function loadCSV() {
-                const target = 'unf_events_all.csv';
-                try {
-                    const resp = await fetch(target, {cache: 'no-store'});
-                    if (!resp.ok) { return; }
-                    const text = await resp.text();
-                    const lines = text.trim().split(/\r?\n/);
-                    if (lines.length === 0) return;
-                    const table = document.createElement('table');
-                    table.style.borderCollapse = 'collapse';
-                    table.style.marginTop = '8px';
-                    const mkRow = (cells, tag) => {
-                        const tr = document.createElement('tr');
-                        cells.forEach(c => {
-                            const el = document.createElement(tag);
-                            el.textContent = c;
-                            el.style.border = '1px solid #ccc';
-                            el.style.padding = '2px 6px';
-                            el.style.fontSize = '12px';
-                            tr.appendChild(el);
-                        });
-                        return tr;
-                    };
-                    const headers = lines[0].split(',');
-                    table.appendChild(mkRow(headers, 'th'));
-                    for (let i=1;i<lines.length;i++) {
-                        const row = lines[i];
-                        if (!row.trim()) continue;
-                        const cells = row.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/); // 简单分割
-                        table.appendChild(mkRow(cells, 'td'));
-                    }
-                    const wrap = document.getElementById('csv-view');
-                    wrap.innerHTML = '';
-                    wrap.appendChild(table);
-                } catch(e) {
-                    console.warn('CSV load failed', e);
-                }
-            }
-            loadCSV();
         </script>
         <script>
             // 将 UTC 时间转换为本地时间显示

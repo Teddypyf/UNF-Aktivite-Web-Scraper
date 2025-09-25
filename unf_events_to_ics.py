@@ -9,7 +9,7 @@ Env (in CI via GitHub Actions Secrets):
 Usage (local):
   python unf_events_to_ics.py --out-dir dist --pages 5
 """
-import os, sys, re, time, getpass, argparse, hashlib, csv
+import os, sys, re, time, getpass, argparse, hashlib
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
 
@@ -144,23 +144,6 @@ def parse_table(soup: BeautifulSoup) -> list[dict]:
             vagt = cells_text[idx_vagt] if 0 <= idx_vagt < len(cells_text) else ""
             res  = cells_text[idx_res]  if 0 <= idx_res  < len(cells_text) else ""
 
-            # 检查是否取消: 取消行包含独立 class token: rowExternal danger footable-even/footable-odd
-            # 之前逻辑错误地把多个标记当成单一 token 内同时出现,改为集合匹配
-            cls_tokens = []
-            for c in tr.get("class", []) or []:
-                if isinstance(c, str):
-                    cls_tokens.append(c.lower())
-            if navn_td is not None:
-                for c in navn_td.get("class", []) or []:
-                    if isinstance(c, str):
-                        cls_tokens.append(c.lower())
-            cls_set = set(cls_tokens)
-            is_cancelled = (
-                "rowexternal" in cls_set and
-                "danger" in cls_set and
-                ("footable-even" in cls_set or "footable-odd" in cls_set)
-            )
-
             out.append({
                 "Navn": (title or "").strip(),
                 "Dato": norm_date(dato),
@@ -168,7 +151,6 @@ def parse_table(soup: BeautifulSoup) -> list[dict]:
                 "Vagter": to_int(vagt),
                 "Reserverede": to_int(res),
                 "URL": (url or "").strip(),
-                "Cancelled": is_cancelled,
             })
     return out
 
@@ -208,7 +190,6 @@ def parse_pipe_lines(soup: BeautifulSoup) -> list[dict]:
             "Vagter": to_int(d.get("Vagter","")),
             "Reserverede": to_int(d.get("Reserverede","") or d.get("Deltagere","")),
             "URL": "",
-            "Cancelled": False,  # 管道文本模式无法识别取消
         })
     return out
 
@@ -336,8 +317,6 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
         ]
         if it.get("URL"):
             desc.append(f"URL: {it['URL']}")
-        if it.get("Cancelled"):
-            desc.append("[已取消]")
         description = "\\n".join(ics_escape(p) for p in desc)
 
         evt = [
@@ -352,10 +331,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
             evt.append(f"URL:{ics_escape(it['URL'])}")
         if description:
             evt.append(f"DESCRIPTION:{description}")
-        if it.get("Cancelled"):
-            evt.append("STATUS:CANCELLED")
-        else:
-            evt.append("STATUS:CONFIRMED")
+        evt.append("STATUS:CONFIRMED")
         evt += ["TRANSP:OPAQUE","END:VEVENT"]
         lines += [fold_ical_line(e) for e in evt]
 
@@ -366,28 +342,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
         f.write(content)
 
 # ---------- Orchestration ----------
-def write_csv(rows: list[dict], out_path: str) -> None:
-    if not rows:
-        return
-    # Ensure deterministic column order
-    cols = ["Location","Navn","Dato","Klokkeslæt","Vagter","Reserverede","URL","Cancelled"]
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(cols)
-        for r in rows:
-            w.writerow([
-                r.get("_location",""),
-                r.get("Navn",""),
-                r.get("Dato",""),
-                r.get("Klokkeslæt",""),
-                r.get("Vagter",""),
-                r.get("Reserverede",""),
-                r.get("URL",""),
-                1 if r.get("Cancelled") else 0,
-            ])
-
-def run_once(out_dir: str, max_pages: int, emit_csv: bool) -> None:
+def run_once(out_dir: str, max_pages: int) -> None:
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Python-Requests",
@@ -397,37 +352,23 @@ def run_once(out_dir: str, max_pages: int, emit_csv: bool) -> None:
     login(session, user, pwd)
 
     ics_files = []
-    all_rows = []  # for combined csv
     for slug, path in LOCATIONS.items():
         start_url = urljoin(BASE, path)
         rows = crawl_location(session, start_url, max_pages=max_pages)
-        # annotate location for csv
-        for r in rows:
-            r["_location"] = slug
         out_path = os.path.join(out_dir, f"unf_events_{slug}.ics")
         calname = f"UNF {slug.upper()} Events"
         rows_to_ics(rows, out_path, calname)
         print(f"[{slug}] Saved {len(rows)} events -> {out_path}")
         ics_files.append(out_path)
-        if emit_csv:
-            csv_path = os.path.join(out_dir, f"unf_events_{slug}.csv")
-            write_csv(rows, csv_path)
-            print(f"[{slug}] CSV -> {csv_path}")
-        all_rows.extend(rows)
     # 输出所有生成的ics文件名,方便后续自动插入到html
     print("ICS_FILES:" + ",".join(ics_files))
-    if emit_csv and all_rows:
-        combined = os.path.join(out_dir, "unf_events_all.csv")
-        write_csv(all_rows, combined)
-        print(f"[all] Combined CSV -> {combined}")
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", default="dist", help="Output directory for ICS files")
     ap.add_argument("--pages", type=int, default=5, help="Max pages to crawl per location")
-    ap.add_argument("--csv", action="store_true", help="Also emit per-location and combined CSV exports for debugging")
     args = ap.parse_args()
-    run_once(args.out_dir, args.pages, args.csv)
+    run_once(args.out_dir, args.pages)
 
 if __name__ == "__main__":
     main()
