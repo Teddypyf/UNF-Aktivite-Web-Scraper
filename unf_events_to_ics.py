@@ -1,109 +1,109 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Login -> Crawl -> Parse -> Generate two ICS feeds (KBH & Lyngby) with TZID=Europe/Copenhagen.
-No intermediate CSV.
+name: Cleanup old workflow runs (older than 24h)
 
-Env (in CI via GitHub Actions Secrets):
-  UNF_USER, UNF_PASS
-Usage (local):
-  python unf_events_to_ics.py --out-dir dist --pages 5
-"""
-import os, sys, re, time, getpass, argparse, hashlib
-from datetime import datetime, timedelta
-from urllib.parse import urljoin
+on:
+  schedule:
+    - cron: "15 23 * * *"  # 每晚 23:15 UTC 触发 (可按需调整)
+  workflow_dispatch: {}
 
-import requests
-from bs4 import BeautifulSoup
-from dateutil import parser as dateparser
-BASE = "https://frivillig.unf.dk"
-LOGIN_URL = "https://frivillig.unf.dk/login/?next=/events/kbh/"
-LOCATIONS = {
-    "kbh":    "/events/kbh/",
-    "lyngby": "/events/lyngby/",
-    "aalborg":"/events/aalborg/",
-    "aarhus": "/events/aarhus/",
-    "danmark":"/events/danmark/",
-    "odense": "/events/odense/",
-}
-ORDER = ["Navn","Dato","Ugedag","Klokkeslæt","Vagter","Reserverede","Pladser","Deltagere","Ekstern/Intern"]
+permissions:
+  actions: write   # 需要删除 workflow run
+  contents: read
 
-DEFAULT_USERNAME = ""
-DEFAULT_PASSWORD = ""
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      HOURS_THRESHOLD: 24         # 超过多少小时删除
+      MIN_KEEP: 3                # 至少保留最新的 N 个 run(安全垫)
+      DRY_RUN: "false"            # 若想先看效果改成 true
+    steps:
+      - name: Gather & delete old runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Threshold hours: ${HOURS_THRESHOLD}h"          
+          echo "Minimum keep (latest runs): ${MIN_KEEP}"      
+          now_epoch=$(date -u +%s)
+          cutoff_epoch=$(( now_epoch - HOURS_THRESHOLD*3600 ))
+          echo "Cutoff epoch: $cutoff_epoch ($(date -u -d @${cutoff_epoch} '+%Y-%m-%d %H:%M:%S'))"
 
-# ---------- Credentials (CI-safe) ----------
-def prompt_credentials():
-    user = os.getenv("UNF_USER")
-    pwd  = os.getenv("UNF_PASS")
+          page=1
+          deleted=0
+          kept=0
+          examined=0
 
-    # Non-interactive (CI): require env and never call input()
-    if os.getenv("GITHUB_ACTIONS") == "true" or not sys.stdin.isatty():
-        if not user or not pwd:
-            raise RuntimeError("Missing UNF_USER/UNF_PASS in environment for non-interactive run.")
-        return user, pwd
+          # 收集所有需要处理的 run(分页,最多 100 每页)
+          # 为简单起见,迭代最多 10 页(如需更多可扩大)
+          while [ $page -le 10 ]; do
+            echo "Fetching page $page" >&2
+            json=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?per_page=100&page=${page}") || break
 
-    # Local interactive fallback
-    user = user or input(f"Username [{DEFAULT_USERNAME}]: ") or DEFAULT_USERNAME
-    entered = getpass.getpass("Password (press Enter to use default): ")
-    pwd = pwd or (entered if entered else DEFAULT_PASSWORD)
-    return user, pwd
+            count=$(echo "$json" | jq '.workflow_runs | length')
+            [ "$count" -eq 0 ] && break
 
-# ---------- Session & Login ----------
-def get_csrf(session: requests.Session) -> str:
-    r = session.get(LOGIN_URL, timeout=20); r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
-    hidden = soup.find("input", {"name": "csrfmiddlewaretoken"})
-    field_token = hidden["value"] if hidden and hidden.has_attr("value") else None
-    cookie_token = session.cookies.get("csrftoken")
-    if not field_token and not cookie_token:
-        raise RuntimeError("CSRF token not found.")
-    return field_token or cookie_token
+            # 按 created_at 降序排序(最新在前),合并进临时文件
+            echo "$json" | jq -r '.workflow_runs[] | [.id, .created_at, .name, .status, .conclusion] | @tsv' >> runs_raw.tsv
+            page=$((page+1))
+          done
 
-def login(session: requests.Session, username: str, password: str) -> None:
-    token = get_csrf(session)
-    headers = {"Referer": LOGIN_URL, "Origin": BASE}
-    payload = {
-        "username": username,
-        "password": password,
-        "csrfmiddlewaretoken": token,
-        "next": "/events/kbh/",
-    }
-    session.post(LOGIN_URL, data=payload, headers=headers, timeout=20, allow_redirects=True)
-    # Sanity check (look for logout marker on KBH page)
-    chk = session.get(urljoin(BASE, LOCATIONS["kbh"]), timeout=20)
-    ok = (chk.status_code == 200) and any(x in chk.text.lower() for x in ["log ud", "logout", "/logout"])
-    if not ok:
-        raise RuntimeError("Login failed. Check credentials or additional protections.")
+          if [ ! -s runs_raw.tsv ]; then
+            echo "No runs found."; exit 0
+          fi
 
-# ---------- Parsing helpers ----------
-def absolutize(href: str) -> str | None:
-    return urljoin(BASE, href) if href else None
+            # 排序(按时间降序),前 MIN_KEEP 行直接跳过保护
+          sort -k2,2r runs_raw.tsv > runs_sorted.tsv
 
-def norm_time(s: str) -> str:
-    if not s: return ""
-    m = re.search(r"(\d{1,2}):(\d{2})", str(s))
-    return m.group(1) if m else str(s).strip()
+          idx=0
+          while IFS=$'\t' read -r run_id created_at name status conclusion; do
+            idx=$((idx+1))
+            examined=$((examined+1))
+            # 保留前 MIN_KEEP 个
+            if [ $idx -le $MIN_KEEP ]; then
+              kept=$((kept+1))
+              continue
+            fi
+            # 时间判定
+            created_epoch=$(date -u -d "$created_at" +%s || echo 0)
+            if [ "$created_epoch" -eq 0 ]; then
+              echo "Warn: cannot parse time for run $run_id ($created_at)" >&2
+              continue
+            fi
+            if [ $created_epoch -ge $cutoff_epoch ]; then
+              kept=$((kept+1))
+              continue
+            fi
 
-def norm_date(s: str) -> str:
-    if not s: return ""
-    try:
-        dt = dateparser.parse(str(s), dayfirst=True, fuzzy=True)
-        return dt.strftime("%Y-%m-%d")
-    except Exception:
-        return ""
+            echo "Delete candidate: id=$run_id created_at=$created_at status=$status conclusion=$conclusion" >&2
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "(dry-run) Skipping actual delete for $run_id" >&2
+              kept=$((kept+1))
+            else
+              code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}")
+              if [ "$code" = "204" ]; then
+                deleted=$((deleted+1))
+                echo "Deleted run $run_id" >&2
+              else
+                echo "Failed to delete run $run_id (HTTP $code)" >&2
+                kept=$((kept+1))
+              fi
+            fi
+          done < runs_sorted.tsv
 
-def to_int(s) -> int:
-    if s is None: return 0
-    m = re.search(r"\d+", str(s))
-    return int(m.group(0)) if m else 0
+          echo "Examined: $examined"
+          echo "Deleted:  $deleted"
+          echo "Kept:     $kept"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "(Dry run mode enabled – no deletions actually performed)"
+          fi
 
-def parse_table(soup: BeautifulSoup) -> list[dict]:
-    out = []
-    for table in soup.select("table"):
-        head_cells = table.find_all("th")
-        if not head_cells:
-            tr0 = table.find("tr")
-            head_cells = tr0.find_all("td") if tr0 else []
+      - name: Summary
+        run: |
+          echo "Cleanup finished at $(date -u '+%Y-%m-%d %H:%M:%S') UTC"
         header = [c.get_text(" ", strip=True) for c in head_cells]
         hl = [h.lower() for h in header]
         if not header: 

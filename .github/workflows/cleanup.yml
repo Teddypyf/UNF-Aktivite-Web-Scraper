@@ -1,0 +1,106 @@
+name: Cleanup old workflow runs (older than 24h)
+
+on:
+  schedule:
+    - cron: "15 23 * * *"  # 每晚 23:15 UTC 触发 (可按需调整)
+  workflow_dispatch: {}
+
+permissions:
+  actions: write   # 需要删除 workflow run
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      HOURS_THRESHOLD: 24         # 超过多少小时删除
+      MIN_KEEP: 10                # 至少保留最新的 N 个 run（安全垫）
+      DRY_RUN: "false"            # 若想先看效果改成 true
+    steps:
+      - name: Gather & delete old runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Threshold hours: ${HOURS_THRESHOLD}h"          
+          echo "Minimum keep (latest runs): ${MIN_KEEP}"      
+          now_epoch=$(date -u +%s)
+          cutoff_epoch=$(( now_epoch - HOURS_THRESHOLD*3600 ))
+          echo "Cutoff epoch: $cutoff_epoch ($(date -u -d @${cutoff_epoch} '+%Y-%m-%d %H:%M:%S'))"
+
+          page=1
+          deleted=0
+          kept=0
+          examined=0
+
+          # 收集所有需要处理的 run（分页，最多 100 每页）
+          # 为简单起见，迭代最多 10 页（如需更多可扩大）
+          while [ $page -le 10 ]; do
+            echo "Fetching page $page" >&2
+            json=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?per_page=100&page=${page}") || break
+
+            count=$(echo "$json" | jq '.workflow_runs | length')
+            [ "$count" -eq 0 ] && break
+
+            # 按 created_at 降序排序（最新在前），合并进临时文件
+            echo "$json" | jq -r '.workflow_runs[] | [.id, .created_at, .name, .status, .conclusion] | @tsv' >> runs_raw.tsv
+            page=$((page+1))
+          done
+
+          if [ ! -s runs_raw.tsv ]; then
+            echo "No runs found."; exit 0
+          fi
+
+            # 排序（按时间降序），前 MIN_KEEP 行直接跳过保护
+          sort -k2,2r runs_raw.tsv > runs_sorted.tsv
+
+          idx=0
+          while IFS=$'\t' read -r run_id created_at name status conclusion; do
+            idx=$((idx+1))
+            examined=$((examined+1))
+            # 保留前 MIN_KEEP 个
+            if [ $idx -le $MIN_KEEP ]; then
+              kept=$((kept+1))
+              continue
+            fi
+            # 时间判定
+            created_epoch=$(date -u -d "$created_at" +%s || echo 0)
+            if [ "$created_epoch" -eq 0 ]; then
+              echo "Warn: cannot parse time for run $run_id ($created_at)" >&2
+              continue
+            fi
+            if [ $created_epoch -ge $cutoff_epoch ]; then
+              kept=$((kept+1))
+              continue
+            fi
+
+            echo "Delete candidate: id=$run_id created_at=$created_at status=$status conclusion=$conclusion" >&2
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "(dry-run) Skipping actual delete for $run_id" >&2
+              kept=$((kept+1))
+            else
+              code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}")
+              if [ "$code" = "204" ]; then
+                deleted=$((deleted+1))
+                echo "Deleted run $run_id" >&2
+              else
+                echo "Failed to delete run $run_id (HTTP $code)" >&2
+                kept=$((kept+1))
+              fi
+            fi
+          done < runs_sorted.tsv
+
+          echo "Examined: $examined"
+          echo "Deleted:  $deleted"
+          echo "Kept:     $kept"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "(Dry run mode enabled – no deletions actually performed)"
+          fi
+
+      - name: Summary
+        run: |
+          echo "Cleanup finished at $(date -u '+%Y-%m-%d %H:%M:%S') UTC"

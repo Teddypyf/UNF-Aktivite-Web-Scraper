@@ -21,7 +21,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ICS_PAGES: 4  # 可调：抓取页面数，减少可加速
+      ICS_PAGES: 4  # 可调:抓取页面数,减少可加速
     outputs:
       skip_deploy: ${{ steps.decide-skip.outputs.skip_deploy }}
     steps:
@@ -86,15 +86,22 @@ jobs:
         id: decide-skip
         run: |
           set -e
-          # 组合新生成 ICS 的内容哈希（按文件名排序保证稳定）
-          NEW_HASH=$(for f in $(ls dist/*.ics | sort); do sha256sum "$f"; done | awk '{print $1}' | tr -d '\n' | sha256sum | awk '{print $1}')
+          set -o pipefail
+          # 组合新生成 ICS 的内容哈希(按文件名排序保证稳定)
+          FILES=$(find dist -maxdepth 1 -type f -name '*.ics' | sort)
+          if [ -z "$FILES" ]; then
+            echo "No ICS files generated – treat as changed (force deploy)." >&2
+            echo "skip_deploy=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          NEW_HASH=$(for f in $FILES; do sha256sum "$f"; done | awk '{print $1}' | tr -d '\n' | sha256sum | awk '{print $1}')
           echo "New combined hash: $NEW_HASH"
           BASE_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
-          # 抓取已发布（若存在）对应 ICS 文件内容
+          # 抓取已发布(若存在)对应 ICS 文件内容
           REMOTE_TMP="remote_ics_concat.tmp"
           touch "$REMOTE_TMP"
           MISSING=0
-          for f in $(ls dist/*.ics | sort); do
+          for f in $FILES; do
             name=$(basename "$f")
             url="$BASE_URL/$name"
             echo "Fetching $url" >&2
@@ -108,9 +115,8 @@ jobs:
             OLD_HASH=$(sha256sum "$REMOTE_TMP" | awk '{print $1}')
             echo "Old combined hash: $OLD_HASH"
             if [ "$OLD_HASH" = "$NEW_HASH" ]; then
-              echo "ICS 内容无变化，标记跳过后续部署。"
+              echo "ICS 内容无变化,标记跳过后续部署."
               echo "skip_deploy=true" >> $GITHUB_OUTPUT
-              echo "SKIP_DEPLOY=1" >> $GITHUB_ENV
             else
               echo "skip_deploy=false" >> $GITHUB_OUTPUT
             fi
