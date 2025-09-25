@@ -1,60 +1,77 @@
 <html lang="zh-cn">
-<head>
-    <meta charset="UTF-8">
-    <title>Last Update Time</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .update-time { font-size: 1.5em; color: #2d8cf0; }
-    </style>
-</head>
-<body>
-    <h1>UNF-Aktivite-ics</h1>
-    <h2>Last Update Time</h2>
-    <div class="update-time" id="update-time">
-        <span id="last-update-utc">UTC: null</span><br>
-        <span id="last-update-local">Local: null</span>
-    </div>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Last Update Time</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .update-time { font-size: 1.5em; color: #2d8cf0; }
+            label { display: inline-block; width: 140px; }
+            input[readonly] { margin-bottom: 6px; }
+            table { border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 14px; }
+            th { background: #f5f5f5; }
+        </style>
+    </head>
+    <body>
+        <h1>UNF-Aktivite-ics</h1>
+        <h2>Last Update Time</h2>
+        <div class="update-time" id="update-time">
+            <span id="last-update-utc">UTC: null</span><br />
+            <span id="last-update-local">Local: null</span>
+        </div>
+
         <h2>ICS订阅链接</h2>
         <div id="ics-links"></div>
+
+        <h2>已发布文件列表</h2>
+        <div id="file-list">
+            <!-- FILE_LIST_START -->
+            <!-- FILE_LIST_END -->
+        </div>
+
         <script>
-            // 动态插入ICS订阅链接,文件名与Python同步
+            // 动态插入 ICS 订阅链接, 文件名与 Python 同步
             const icsFiles = [
-                {slug: 'kbh', name: 'UNF København'},
-                {slug: 'lyngby', name: 'UNF Lyngby'},
-                {slug: 'aalborg', name: 'UNF Aalborg'},
-                {slug: 'aarhus', name: 'UNF Aarhus'},
-                {slug: 'danmark', name: 'UNF Danmark'},
-                {slug: 'odense', name: 'UNF Odense'}
+                { slug: 'kbh', name: 'UNF København' },
+                { slug: 'lyngby', name: 'UNF Lyngby' },
+                { slug: 'aalborg', name: 'UNF Aalborg' },
+                { slug: 'aarhus', name: 'UNF Aarhus' },
+                { slug: 'danmark', name: 'UNF Danmark' },
+                { slug: 'odense', name: 'UNF Odense' }
             ];
-            const repo = 'Teddypyf/UNF-Aktivite-web-screpper';
             const baseUrl = `https://Teddypyf.github.io/UNF-Aktivite-web-screpper/`;
             let html = '';
             icsFiles.forEach((f, i) => {
                 const fname = `unf_events_${f.slug}.ics`;
                 html += `<label for="ics-link${i}">${f.name}:</label>`;
-                html += `<input id="ics-link${i}" type="text" value="${baseUrl}${fname}" readonly style="width:400px;" onclick="this.select()"><br>`;
+                html += `<input id="ics-link${i}" type="text" value="${baseUrl}${fname}" readonly style="width:400px;" onclick="this.select()" /><br />`;
             });
             document.getElementById('ics-links').innerHTML = html;
         </script>
         <script>
-            // 获取页面中的 UTC 时间(由 workflow 写入)
-            // 假设 sed 替换的是 UTC 时间
+            // 将 UTC 时间转换为本地时间显示
             const utcSpan = document.getElementById('last-update-utc');
             const localSpan = document.getElementById('last-update-local');
-            // 这里假设 workflow 会写入 UTC 时间到 UTC span
-            // 如果页面初始为"尚未更新",则不处理
-                        let utcText = utcSpan.textContent;
-                        let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
-                        if (match) {
-                                let utcDate = new Date(match[1] + ' UTC');
-                                // 格式化为 yyyy-MM-dd HH:mm:ss
-                                function pad(n) { return n < 10 ? '0' + n : n; }
-                                function formatDate(d) {
-                                    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-                                }
-                                utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
-                                localSpan.textContent = 'Local: ' + formatDate(new Date(utcDate.getTime() + utcDate.getTimezoneOffset()*60000*(-1)));
-                        }
+            let utcText = utcSpan.textContent;
+            let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+            if (match) {
+                let utcDate = new Date(match[1] + ' UTC');
+                function pad(n) { return n < 10 ? '0' + n : n; }
+                function formatDate(d) {
+                    return (
+                        d.getFullYear() +
+                        '-' + pad(d.getMonth() + 1) +
+                        '-' + pad(d.getDate()) +
+                        ' ' + pad(d.getHours()) +
+                        ':' + pad(d.getMinutes()) +
+                        ':' + pad(d.getSeconds())
+                    );
+                }
+                utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
+                localSpan.textContent = 'Local: ' + formatDate(
+                    new Date(utcDate.getTime() + utcDate.getTimezoneOffset() * 60000 * -1)
+                );
+            }
         </script>
-</body>
+    </body>
 </html>
