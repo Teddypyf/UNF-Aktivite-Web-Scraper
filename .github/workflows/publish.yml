@@ -27,17 +27,16 @@ jobs:
           echo "运行时间: $(date '+%Y-%m-%d %H:%M:%S')"
       - name: Set workflow run title
         run: |
-          echo "::group::设置运行标题"
+          echo "设置运行标题"
           if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
-            echo "::set-output name=run_title::定时触发 $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "run_title=定时触发 $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            echo "::set-output name=run_title::推送触发 $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "run_title=推送触发 $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "::set-output name=run_title::手动触发 $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "run_title=手动触发 $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=run_title::其他触发 $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "run_title=其他触发 $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           fi
-          echo "::endgroup::"
       - name: Checkout
         uses: actions/checkout@v4
       - name: Clean dist before build
