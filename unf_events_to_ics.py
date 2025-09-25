@@ -125,12 +125,13 @@ def parse_table(soup: BeautifulSoup) -> list[dict]:
 
         for tr in table.find_all("tr"):
             tds = tr.find_all("td")
-            if not tds: 
+            if not tds:
                 continue
             cells_text = [td.get_text(" ", strip=True) for td in tds]
             url, title = None, ""
-            if 0 <= idx_navn < len(tds):
-                a = tds[idx_navn].find("a", href=True)
+            navn_td = tds[idx_navn] if 0 <= idx_navn < len(tds) else None
+            if navn_td is not None:
+                a = navn_td.find("a", href=True)
                 url = absolutize(a["href"]) if a else None
                 title = a.get_text(" ", strip=True) if a else cells_text[idx_navn]
             else:
@@ -143,11 +144,21 @@ def parse_table(soup: BeautifulSoup) -> list[dict]:
             vagt = cells_text[idx_vagt] if 0 <= idx_vagt < len(cells_text) else ""
             res  = cells_text[idx_res]  if 0 <= idx_res  < len(cells_text) else ""
 
-            # 检查是否取消
-            tr_class = tr.get("class", [])
-            is_cancelled = any(
-                "rowexternal" in c.lower() and "danger" in c.lower() and ("footable-even" in c.lower() or "footable-odd" in c.lower())
-                for c in tr_class
+            # 检查是否取消: 取消行包含独立 class token: rowExternal danger footable-even/footable-odd
+            # 之前逻辑错误地把多个标记当成单一 token 内同时出现,改为集合匹配
+            cls_tokens = []
+            for c in tr.get("class", []) or []:
+                if isinstance(c, str):
+                    cls_tokens.append(c.lower())
+            if navn_td is not None:
+                for c in navn_td.get("class", []) or []:
+                    if isinstance(c, str):
+                        cls_tokens.append(c.lower())
+            cls_set = set(cls_tokens)
+            is_cancelled = (
+                "rowexternal" in cls_set and
+                "danger" in cls_set and
+                ("footable-even" in cls_set or "footable-odd" in cls_set)
             )
 
             out.append({
@@ -191,12 +202,13 @@ def parse_pipe_lines(soup: BeautifulSoup) -> list[dict]:
         if not d:
             continue
         out.append({
-            "Navn": d.get("Navn","").strip(),
+            "Navn": d.get("Navn","" ).strip(),
             "Dato": norm_date(d.get("Dato","")),
             "Klokkeslæt": norm_time(d.get("Klokkeslæt","")),
             "Vagter": to_int(d.get("Vagter","")),
             "Reserverede": to_int(d.get("Reserverede","") or d.get("Deltagere","")),
             "URL": "",
+            "Cancelled": False,  # 管道文本模式无法识别取消
         })
     return out
 
