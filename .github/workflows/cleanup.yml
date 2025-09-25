@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HOURS_THRESHOLD: 24         # 超过多少小时删除
-      MIN_KEEP: 10                # 至少保留最新的 N 个 run（安全垫）
+      MIN_KEEP: 3                # 至少保留最新的 N 个 run（安全垫）
       DRY_RUN: "false"            # 若想先看效果改成 true
     steps:
       - name: Gather & delete old runs
