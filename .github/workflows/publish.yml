@@ -40,6 +40,9 @@ jobs:
           echo "::endgroup::"
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Clean dist before build
+        run: |
+          rm -rf dist
 
       - name: Setup Python
         uses: actions/setup-python@v5

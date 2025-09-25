@@ -8,12 +8,20 @@
     </style>
 </head>
 <body>
-        <h1>UNF-Aktivite-ics</h1>
-        <h2>Last Update Time</h2>
-        <div class="update-time" id="update-time">
-            <span id="last-update-utc">UTC: null</span><br>
-            <span id="last-update-local">Local: null</span>
-        </div>
+    <h1>UNF-Aktivite-ics</h1>
+    <h2>Last Update Time</h2>
+    <div class="update-time" id="update-time">
+        <span id="last-update-utc">UTC: null</span><br>
+        <span id="last-update-local">Local: null</span>
+    </div>
+    <h2>ics subscription links</h2>
+    <div>
+        <label for="ics-link">KBH:</label>
+        <input id="ics-link" type="text" value="./KBH.ics" readonly style="width:300px;" onclick="this.select()">
+        <br>
+        <label for="ics-link2">Lyngby:</label>
+        <input id="ics-link2" type="text" value="./Lyngby.ics" readonly style="width:300px;" onclick="this.select()">
+    </div>
         <script>
             // 获取页面中的 UTC 时间(由 workflow 写入)
             // 假设 sed 替换的是 UTC 时间
