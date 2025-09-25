@@ -1,4 +1,4 @@
-name: Build & Publish UNF ICS (KBH & Lyngby)
+name: UNF activity scraper and publish
 
 on:
   workflow_dispatch: {}
