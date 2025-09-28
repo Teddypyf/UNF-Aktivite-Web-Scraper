@@ -71,7 +71,6 @@
             if (match) {
                 let utcDate = new Date(match[1]); // ISO 格式直接解析
                 utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
-                // 本地时间格式化
                 function formatLocalDate(d) {
                     return (
                         d.getFullYear() +
@@ -82,9 +81,14 @@
                         ':' + pad(d.getSeconds())
                     );
                 }
-                localSpan.textContent = 'Local: ' + formatLocalDate(utcDate);
+                if (!isNaN(utcDate.getTime())) {
+                    localSpan.textContent = 'Local: ' + formatLocalDate(utcDate);
+                } else {
+                    localSpan.textContent = 'Local: 时间解析失败';
+                }
                 tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             } else {
+                localSpan.textContent = 'Local: 未匹配到时间';
                 tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             }
         </script>
