@@ -58,39 +58,24 @@
             const utcSpan = document.getElementById('last-update-utc');
             const tzSpan = document.getElementById('local-timezone');
             const currentRefSpan = document.getElementById('current-time-ref');
-            function formatISO(d) {
-                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+            function formatNormal(d) {
+                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
             }
             let utcText = utcSpan.textContent;
             let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
+            let browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            let offsetMin = -new Date().getTimezoneOffset();
+            let sign = offsetMin >= 0 ? '+' : '-';
+            let absMin = Math.abs(offsetMin);
+            let offsetStr = sign + String(Math.floor(absMin/60)).padStart(2, '0') + ':' + String(absMin%60).padStart(2, '0');
             if (match) {
                 let utcDate = new Date(match[1]);
-                utcSpan.textContent = 'UTC: ' + formatISO(utcDate);
-                const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                const offsetMin = -new Date().getTimezoneOffset();
-                const sign = offsetMin >= 0 ? '+' : '-';
-                const absMin = Math.abs(offsetMin);
-                const offsetStr = sign + String(Math.floor(absMin/60)).padStart(2, '0') + ':' + String(absMin%60).padStart(2, '0');
-                tzSpan.textContent = 'Browser Timezone: ' + browserTz + ' (offset ' + offsetStr + ')';
-                // 当前时间参考也用同样格式
-                function updateCurrentRef() {
-                    const now = new Date();
-                    currentRefSpan.textContent = 'Current Time: ' + formatISO(now);
-                }
-                updateCurrentRef();
-                setInterval(updateCurrentRef, 60000);
-            } else {
-                const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                const offsetMin = -new Date().getTimezoneOffset();
-                const sign = offsetMin >= 0 ? '+' : '-';
-                const absMin = Math.abs(offsetMin);
-                const offsetStr = sign + String(Math.floor(absMin/60)).padStart(2, '0') + ':' + String(absMin%60).padStart(2, '0');
-                tzSpan.textContent = 'Browser Timezone: ' + browserTz + ' (UTC' + offsetStr + ')';
+                utcSpan.textContent = 'UTC: ' + formatNormal(utcDate);
             }
-            // 当前时间参考
+            tzSpan.textContent = 'Browser Timezone: ' + browserTz + ' (offset ' + offsetStr + ')';
             function updateCurrentRef() {
                 const now = new Date();
-                currentRefSpan.textContent = 'Browser Current Time: ' + now.toLocaleString();
+                currentRefSpan.textContent = 'Current Time: ' + formatNormal(now);
             }
             updateCurrentRef();
             setInterval(updateCurrentRef, 60000);
