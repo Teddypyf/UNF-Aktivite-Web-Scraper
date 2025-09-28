@@ -22,10 +22,10 @@ LOGIN_URL = "https://frivillig.unf.dk/login/?next=/events/kbh/"
 LOCATIONS = {
     "kbh":    "/events/kbh/",
     "lyngby": "/events/lyngby/",
-    "aalborg":"/events/aalborg/",
     "aarhus": "/events/aarhus/",
-    "danmark":"/events/danmark/",
     "odense": "/events/odense/",
+    "aalborg":"/events/aalborg/",
+    "danmark":"/events/danmark/",
 }
 ORDER = ["Navn","Dato","Ugedag","Klokkeslæt","Vagter","Reserverede","Pladser","Deltagere","Ekstern/Intern"]
 
