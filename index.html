@@ -14,11 +14,10 @@
     </head>
     <body>
     <h1>UNF-Aktivite-ics</h1>
-    <div id="current-time" style="font-size:1.2em;color:#555;margin-bottom:10px;"></div>
         <h2>Last Update Time</h2>
         <div class="update-time" id="update-time">
             <span id="last-update-utc">UTC: null</span><br />
-            <span id="last-update-local">Local: null</span><br />
+            <span id="current-time-ref" style="font-size:0.9em;color:#888;"></span><br />
             <span id="local-timezone" style="font-size:0.9em;color:#888;"></span>
         </div>
 
@@ -36,13 +35,6 @@
         <script>
     // 每5分钟自动刷新页面
     setInterval(function() { location.reload(); }, 300000);
-        // 顶部显示当前本地时间,并每分钟刷新
-        function updateCurrentTime() {
-            const now = new Date();
-            document.getElementById('current-time').textContent = 'Current Time: ' + now.toLocaleString();
-        }
-        updateCurrentTime();
-        setInterval(updateCurrentTime, 15000);
             // 动态插入 ICS 订阅链接, 文件名与 Python 同步
             const icsFiles = [
                 { slug: 'kbh', name: 'UNF København' },
@@ -64,32 +56,44 @@
         <script>
             // 只做格式转换:UTC时间由后端插入,JS自动格式化本地时间为 yyyy-MM-dd HH:mm:ss,并展示浏览器时区
             const utcSpan = document.getElementById('last-update-utc');
-            const localSpan = document.getElementById('last-update-local');
             const tzSpan = document.getElementById('local-timezone');
+            const currentRefSpan = document.getElementById('current-time-ref');
+            function formatISO(d) {
+                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+            }
             let utcText = utcSpan.textContent;
             let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
-            function pad(n) { return n < 10 ? '0' + n : n; }
-            function formatDate(d) {
-                return (
-                    d.getFullYear() +
-                    '-' + pad(d.getMonth() + 1) +
-                    '-' + pad(d.getDate()) +
-                    ' ' + pad(d.getHours()) +
-                    ':' + pad(d.getMinutes()) +
-                    ':' + pad(d.getSeconds())
-                );
-            }
             if (match) {
                 let utcDate = new Date(match[1]);
-                utcSpan.textContent = 'UTC: ' + utcDate.toLocaleString();
+                utcSpan.textContent = 'UTC: ' + formatISO(utcDate);
                 const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                let localStr = utcDate.toLocaleString(undefined, { timeZone: browserTz });
-                localSpan.textContent = localStr ? ('Local: ' + localStr) : 'Local: null';
-                tzSpan.textContent = 'Browser Timezone: ' + browserTz;
+                const offsetMin = -new Date().getTimezoneOffset();
+                const sign = offsetMin >= 0 ? '+' : '-';
+                const absMin = Math.abs(offsetMin);
+                const offsetStr = sign + String(Math.floor(absMin/60)).padStart(2, '0') + ':' + String(absMin%60).padStart(2, '0');
+                tzSpan.textContent = 'Browser Timezone: ' + browserTz + ' (offset ' + offsetStr + ')';
+                // 当前时间参考也用同样格式
+                function updateCurrentRef() {
+                    const now = new Date();
+                    currentRefSpan.textContent = 'Current Time: ' + formatISO(now);
+                }
+                updateCurrentRef();
+                setInterval(updateCurrentRef, 60000);
             } else {
-                localSpan.textContent = 'Local: null';
-                tzSpan.textContent = 'Browser Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const offsetMin = -new Date().getTimezoneOffset();
+                const sign = offsetMin >= 0 ? '+' : '-';
+                const absMin = Math.abs(offsetMin);
+                const offsetStr = sign + String(Math.floor(absMin/60)).padStart(2, '0') + ':' + String(absMin%60).padStart(2, '0');
+                tzSpan.textContent = 'Browser Timezone: ' + browserTz + ' (UTC' + offsetStr + ')';
             }
+            // 当前时间参考
+            function updateCurrentRef() {
+                const now = new Date();
+                currentRefSpan.textContent = 'Browser Current Time: ' + now.toLocaleString();
+            }
+            updateCurrentRef();
+            setInterval(updateCurrentRef, 60000);
 
         // 文件列表为空时显示提示
         window.addEventListener('DOMContentLoaded', function() {
