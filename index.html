@@ -17,7 +17,8 @@
         <h2>Last Update Time</h2>
         <div class="update-time" id="update-time">
             <span id="last-update-utc">UTC: null</span><br />
-            <span id="last-update-local">Local: null</span>
+            <span id="last-update-local">Local: null</span><br />
+            <span id="local-timezone" style="font-size:0.9em;color:#888;"></span>
         </div>
 
         <h2>ICS subscription links</h2>
@@ -50,9 +51,10 @@
             document.getElementById('ics-links').innerHTML = html;
         </script>
         <script>
-            // 将 UTC 时间转换为本地时间显示
+            // 将 UTC 时间转换为本地时间显示，并展示浏览器时区
             const utcSpan = document.getElementById('last-update-utc');
             const localSpan = document.getElementById('last-update-local');
+            const tzSpan = document.getElementById('local-timezone');
             let utcText = utcSpan.textContent;
             let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
             if (match) {
@@ -69,9 +71,13 @@
                     );
                 }
                 utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
-                localSpan.textContent = 'Local: ' + formatDate(
-                    new Date(utcDate.getTime() + utcDate.getTimezoneOffset() * 60000 * -1)
-                );
+                // 使用 toLocaleString 并指定时区
+                const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const localStr = utcDate.toLocaleString('zh-CN', { timeZone: browserTz, hour12: false });
+                localSpan.textContent = 'Local: ' + localStr;
+                tzSpan.textContent = 'Timezone: ' + browserTz;
+            } else {
+                tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             }
         </script>
     </body>
