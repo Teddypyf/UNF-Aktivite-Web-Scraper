@@ -56,7 +56,7 @@
             const localSpan = document.getElementById('last-update-local');
             const tzSpan = document.getElementById('local-timezone');
             let utcText = utcSpan.textContent;
-            let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+            let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
             function pad(n) { return n < 10 ? '0' + n : n; }
             function formatDate(d) {
                 return (
@@ -69,17 +69,15 @@
                 );
             }
             if (match) {
-                let utcDate = new Date(match[1] + ' UTC');
+                let utcDate = new Date(match[1]); // ISO 格式直接解析
                 utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
                 // 本地时间格式化
                 const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                // 转为本地时间对象
-                let localDate = new Date(utcDate.getTime() - utcDate.getTimezoneOffset() * 60000);
                 // 直接用本地时间对象格式化
-                localSpan.textContent = 'Local: ' + formatDate(localDate);
-                tzSpan.textContent = '浏览器时区: ' + browserTz;
+                localSpan.textContent = 'Local: ' + formatDate(new Date(utcDate.getTime()));
+                tzSpan.textContent = 'Timezone: ' + browserTz;
             } else {
-                tzSpan.textContent = '浏览器时区: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
+                tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             }
         </script>
     </body>

@@ -440,7 +440,7 @@ def update_index_html_with_utc(index_html_path):
     import re
     from datetime import datetime, timezone
     # 强制使用 UTC 时间
-    utc_now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    utc_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
         with open(index_html_path, "r", encoding="utf-8") as f:
             html = f.read()
