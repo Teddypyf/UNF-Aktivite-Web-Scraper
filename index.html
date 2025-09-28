@@ -13,7 +13,8 @@
         </style>
     </head>
     <body>
-        <h1>UNF-Aktivite-ics</h1>
+    <h1>UNF-Aktivite-ics</h1>
+    <div id="current-time" style="font-size:1.2em;color:#555;margin-bottom:10px;"></div>
         <h2>Last Update Time</h2>
         <div class="update-time" id="update-time">
             <span id="last-update-utc">UTC: null</span><br />
@@ -27,11 +28,19 @@
         <h2>Published Files</h2>
         <div id="file-list">
             <!-- FILE_LIST_START -->
+            <span id="no-files" style="color:#888;"></span>
             <!-- FILE_LIST_END -->
         </div>
 
 
         <script>
+        // 顶部显示当前本地时间，并每分钟刷新
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = 'Current Time: ' + now.toLocaleString();
+        }
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 60000);
             // 动态插入 ICS 订阅链接, 文件名与 Python 同步
             const icsFiles = [
                 { slug: 'kbh', name: 'UNF København' },
@@ -51,7 +60,7 @@
             document.getElementById('ics-links').innerHTML = html;
         </script>
         <script>
-            // 只做格式转换：UTC时间由后端插入，JS自动格式化本地时间为 yyyy-MM-dd HH:mm:ss，并展示浏览器时区
+            // 只做格式转换:UTC时间由后端插入,JS自动格式化本地时间为 yyyy-MM-dd HH:mm:ss,并展示浏览器时区
             const utcSpan = document.getElementById('last-update-utc');
             const localSpan = document.getElementById('last-update-local');
             const tzSpan = document.getElementById('local-timezone');
@@ -69,20 +78,25 @@
                 );
             }
             if (match) {
-                let utcDate = new Date(match[1]); // ISO 格式直接解析
-                utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
+                let utcDate = new Date(match[1]);
+                utcSpan.textContent = 'UTC: ' + utcDate.toLocaleString();
                 const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                // 用 toLocaleString 按浏览器时区格式化
-                let localStr = utcDate.toLocaleString('en-US', {
-                    timeZone: browserTz,
-                    hour12: false
-                });
-                localSpan.textContent = 'Local: ' + localStr;
-                tzSpan.textContent = 'timezone: ' + browserTz;
+                let localStr = utcDate.toLocaleString(undefined, { timeZone: browserTz });
+                localSpan.textContent = localStr ? ('Local: ' + localStr) : 'Local: null';
+                tzSpan.textContent = 'Browser Timezone: ' + browserTz;
             } else {
-                localSpan.textContent = 'Local: no valid time found';
-                tzSpan.textContent = 'timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
+                localSpan.textContent = 'Local: null';
+                tzSpan.textContent = 'Browser Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             }
+
+        // 文件列表为空时显示提示
+        window.addEventListener('DOMContentLoaded', function() {
+            var fileList = document.getElementById('file-list');
+            var noFiles = document.getElementById('no-files');
+            if (fileList && noFiles && fileList.innerText.trim() === '') {
+                noFiles.textContent = 'No files published.';
+            }
+        });
         </script>
     </body>
 </html>
