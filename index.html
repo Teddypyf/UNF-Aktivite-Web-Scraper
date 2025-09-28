@@ -34,13 +34,15 @@
 
 
         <script>
-        // 顶部显示当前本地时间，并每分钟刷新
+    // 每5分钟自动刷新页面
+    setInterval(function() { location.reload(); }, 300000);
+        // 顶部显示当前本地时间,并每分钟刷新
         function updateCurrentTime() {
             const now = new Date();
             document.getElementById('current-time').textContent = 'Current Time: ' + now.toLocaleString();
         }
         updateCurrentTime();
-        setInterval(updateCurrentTime, 60000);
+        setInterval(updateCurrentTime, 15000);
             // 动态插入 ICS 订阅链接, 文件名与 Python 同步
             const icsFiles = [
                 { slug: 'kbh', name: 'UNF København' },
