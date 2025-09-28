@@ -71,25 +71,17 @@
             if (match) {
                 let utcDate = new Date(match[1]); // ISO 格式直接解析
                 utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
-                function formatLocalDate(d) {
-                    return (
-                        d.getFullYear() +
-                        '-' + pad(d.getMonth() + 1) +
-                        '-' + pad(d.getDate()) +
-                        ' ' + pad(d.getHours()) +
-                        ':' + pad(d.getMinutes()) +
-                        ':' + pad(d.getSeconds())
-                    );
-                }
-                if (!isNaN(utcDate.getTime())) {
-                    localSpan.textContent = 'Local: ' + formatLocalDate(utcDate);
-                } else {
-                    localSpan.textContent = 'Local: 时间解析失败';
-                }
-                tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                // 用 toLocaleString 按浏览器时区格式化
+                let localStr = utcDate.toLocaleString('en-US', {
+                    timeZone: browserTz,
+                    hour12: false
+                });
+                localSpan.textContent = 'Local: ' + localStr;
+                tzSpan.textContent = 'timezone: ' + browserTz;
             } else {
-                localSpan.textContent = 'Local: 未匹配到时间';
-                tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
+                localSpan.textContent = 'Local: no valid time found';
+                tzSpan.textContent = 'timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             }
         </script>
     </body>
