@@ -433,6 +433,27 @@ def run_once(out_dir: str, max_pages: int, workers: int, cache_ttl: int) -> None
 
     print("ICS_FILES:" + ",".join(ics_files))
 
+    # 自动更新 index.html 的 UTC 时间
+    update_index_html_with_utc("index.html")
+
+def update_index_html_with_utc(index_html_path):
+    import re
+    from datetime import datetime
+    utc_now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        with open(index_html_path, "r", encoding="utf-8") as f:
+            html = f.read()
+        # 替换 UTC 时间
+        new_html = re.sub(
+            r'(<span id="last-update-utc">)UTC: [^<]*?(</span>)',
+            f'\\1UTC: {utc_now}\\2',
+            html
+        )
+        with open(index_html_path, "w", encoding="utf-8") as f:
+            f.write(new_html)
+    except Exception as e:
+        print(f"[WARN] 更新 index.html UTC 时间失败: {e}")
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", default="dist", help="Output directory for ICS files")

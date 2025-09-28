@@ -51,33 +51,35 @@
             document.getElementById('ics-links').innerHTML = html;
         </script>
         <script>
-            // 将 UTC 时间转换为本地时间显示，并展示浏览器时区
+            // 只做格式转换：UTC时间由后端插入，JS自动格式化本地时间为 yyyy-MM-dd HH:mm:ss，并展示浏览器时区
             const utcSpan = document.getElementById('last-update-utc');
             const localSpan = document.getElementById('last-update-local');
             const tzSpan = document.getElementById('local-timezone');
             let utcText = utcSpan.textContent;
             let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+            function pad(n) { return n < 10 ? '0' + n : n; }
+            function formatDate(d) {
+                return (
+                    d.getFullYear() +
+                    '-' + pad(d.getMonth() + 1) +
+                    '-' + pad(d.getDate()) +
+                    ' ' + pad(d.getHours()) +
+                    ':' + pad(d.getMinutes()) +
+                    ':' + pad(d.getSeconds())
+                );
+            }
             if (match) {
                 let utcDate = new Date(match[1] + ' UTC');
-                function pad(n) { return n < 10 ? '0' + n : n; }
-                function formatDate(d) {
-                    return (
-                        d.getFullYear() +
-                        '-' + pad(d.getMonth() + 1) +
-                        '-' + pad(d.getDate()) +
-                        ' ' + pad(d.getHours()) +
-                        ':' + pad(d.getMinutes()) +
-                        ':' + pad(d.getSeconds())
-                    );
-                }
                 utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
-                // 使用 toLocaleString 并指定时区
+                // 本地时间格式化
                 const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                const localStr = utcDate.toLocaleString('zh-CN', { timeZone: browserTz, hour12: false });
-                localSpan.textContent = 'Local: ' + localStr;
-                tzSpan.textContent = 'Timezone: ' + browserTz;
+                // 转为本地时间对象
+                let localDate = new Date(utcDate.getTime() - utcDate.getTimezoneOffset() * 60000);
+                // 直接用本地时间对象格式化
+                localSpan.textContent = 'Local: ' + formatDate(localDate);
+                tzSpan.textContent = '浏览器时区: ' + browserTz;
             } else {
-                tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
+                tzSpan.textContent = '浏览器时区: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             }
         </script>
     </body>
