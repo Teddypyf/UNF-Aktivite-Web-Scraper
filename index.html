@@ -72,10 +72,18 @@
                 let utcDate = new Date(match[1]); // ISO 格式直接解析
                 utcSpan.textContent = 'UTC: ' + formatDate(utcDate);
                 // 本地时间格式化
-                const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                // 直接用本地时间对象格式化
-                localSpan.textContent = 'Local: ' + formatDate(new Date(utcDate.getTime()));
-                tzSpan.textContent = 'Timezone: ' + browserTz;
+                function formatLocalDate(d) {
+                    return (
+                        d.getFullYear() +
+                        '-' + pad(d.getMonth() + 1) +
+                        '-' + pad(d.getDate()) +
+                        ' ' + pad(d.getHours()) +
+                        ':' + pad(d.getMinutes()) +
+                        ':' + pad(d.getSeconds())
+                    );
+                }
+                localSpan.textContent = 'Local: ' + formatLocalDate(utcDate);
+                tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             } else {
                 tzSpan.textContent = 'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
             }
