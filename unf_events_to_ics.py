@@ -453,7 +453,7 @@ def update_index_html_with_utc(index_html_path):
         with open(index_html_path, "w", encoding="utf-8") as f:
             f.write(new_html)
     except Exception as e:
-    print(f"[WARN] Failed to update UTC time in index.html: {e}")
+        print(f"[WARN] Failed to update UTC time in index.html: {e}")
 
 def main():
     ap = argparse.ArgumentParser()
