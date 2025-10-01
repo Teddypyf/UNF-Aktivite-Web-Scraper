@@ -1,35 +1,62 @@
+
 # UNF Aktivite Web Scraper
 
-本项目用于自动抓取 UNF KBH 和 Lyngby 活动信息,并生成带有欧洲哥本哈根时区的 ICS 日历文件.支持 GitHub Actions 自动化发布.
+This project automatically scrapes UNF event information for KBH, Lyngby, Aalborg, Aarhus, Danmark, and Odense, and generates ICS calendar files with Europe/Copenhagen timezone. Supports automated publishing via GitHub Actions.
 
-## 功能简介
+## Features
 
-- 登录 UNF 活动网站(支持 CI 环境和本地交互式登录)
-- 爬取 KBH 和 Lyngby 两地活动,支持多页抓取
-- 解析活动表格或管道分隔文本
-- 生成符合 iCalendar 标准的 ICS 文件,包含时区信息
-- 自动化发布到 GitHub Pages
+- Login to the UNF event website (supports both CI environment and local interactive login)
+- Crawl events for multiple cities, with multi-page support
+- Parse event tables or pipe-separated text
+- Generate ICS files conforming to the iCalendar standard, including timezone info
+- Automated publishing to GitHub Pages
 
+## Usage
 
-## 使用方法
+### GitHub Actions Automation
 
-### GitHub Actions 自动化
+- The workflow file `.github/workflows/publish.yml` is scheduled to run several times a day, automatically scraping and publishing to GitHub Pages.
+- You must set `UNF_USER` and `UNF_PASS` in the repository Secrets.
+- Generated ICS files are uploaded to the `dist` directory and published via Pages.
 
-- 工作流文件 `.github/workflows/publish.yml` 已配置定时任务,每天多次自动抓取并发布到 GitHub Pages.
-- 需在仓库 Secrets 中设置 `UNF_USER` 和 `UNF_PASS`.
-- 自动生成的 ICS 文件会上传到 `dist` 目录,并通过 Pages 发布.
+### Local Run
 
-## 主要文件说明
+1. Install dependencies:
 
-- `unf_events_to_ics.py`:主爬虫及 ICS 生成脚本
-- `.github/workflows/publish.yml`:GitHub Actions 自动化发布配置
+	```bash
+	pip install -r requirements.txt
+	```
 
-## 环境变量
+2. Run the script:
 
-- `UNF_USER`:UNF 登录用户名
-- `UNF_PASS`:UNF 登录密码
+	```bash
+	python unf_events_to_ics.py --out-dir dist --pages 5
+	```
 
-## 输出结果
+	Optional arguments:
+	- `--workers N` Number of parallel crawling threads (default 3)
+	- `--cache-ttl SECONDS` Page cache time (default 0, off)
 
-- `dist/unf_events_kbh.ics`:KBH 活动 ICS 文件
-- `dist/unf_events_lyngby.ics`:Lyngby 活动 ICS 文件
+## Main Files
+
+- `unf_events_to_ics.py`: Main crawler and ICS generator script
+- `.github/workflows/publish.yml`: GitHub Actions automation workflow
+- `index.html`: Static page showing update time, file list, and subscription links
+
+## Environment Variables
+
+- `UNF_USER`: UNF login username
+- `UNF_PASS`: UNF login password
+
+## Output
+
+- `dist/unf_events_kbh.ics`: KBH events ICS file
+- `dist/unf_events_lyngby.ics`: Lyngby events ICS file
+- `dist/unf_events_aarhus.ics`: Aarhus events ICS file
+- `dist/unf_events_odense.ics`: Odense events ICS file
+- `dist/unf_events_aalborg.ics`: Aalborg events ICS file
+- `dist/unf_events_danmark.ics`: Danmark events ICS file
+
+---
+
+For a Chinese version, see [README.zh-CN.md](README.zh-CN.md)

@@ -433,18 +433,18 @@ def run_once(out_dir: str, max_pages: int, workers: int, cache_ttl: int) -> None
 
     print("ICS_FILES:" + ",".join(ics_files))
 
-    # 自动更新 index.html 的 UTC 时间
+    # Automatically update UTC time in index.html
     update_index_html_with_utc("index.html")
 
 def update_index_html_with_utc(index_html_path):
     import re
     from datetime import datetime, timezone
-    # 强制使用 UTC 时间
+    # Always use UTC time
     utc_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
         with open(index_html_path, "r", encoding="utf-8") as f:
             html = f.read()
-        # 替换 UTC 时间
+    # Replace UTC time
         new_html = re.sub(
             r'(<span id="last-update-utc">)UTC: [^<]*?(</span>)',
             f'\\1UTC: {utc_now}\\2',
@@ -453,14 +453,14 @@ def update_index_html_with_utc(index_html_path):
         with open(index_html_path, "w", encoding="utf-8") as f:
             f.write(new_html)
     except Exception as e:
-        print(f"[WARN] 更新 index.html UTC 时间失败: {e}")
+    print(f"[WARN] Failed to update UTC time in index.html: {e}")
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", default="dist", help="Output directory for ICS files")
     ap.add_argument("--pages", type=int, default=5, help="Max pages to crawl per location")
-    ap.add_argument("--workers", type=int, default=3, help="并行抓取线程数 (建议 1-4)")
-    ap.add_argument("--cache-ttl", type=int, default=int(os.getenv("UNF_CACHE_TTL", "0")), help="页面缓存秒数 (内存缓存, 0=关闭)")
+    ap.add_argument("--workers", type=int, default=3, help="Number of parallel crawling threads (suggest 1-4)")
+    ap.add_argument("--cache-ttl", type=int, default=int(os.getenv("UNF_CACHE_TTL", "0")), help="Page cache seconds (in-memory cache, 0=off)")
     args = ap.parse_args()
     run_once(args.out_dir, args.pages, args.workers, args.cache_ttl)
 

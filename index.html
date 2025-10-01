@@ -33,9 +33,9 @@
 
 
         <script>
-    // 每5分钟自动刷新页面
+    // Auto refresh the page every 5 minutes
     setInterval(function() { location.reload(); }, 300000);
-            // 动态插入 ICS 订阅链接, 文件名与 Python 同步
+            // Dynamically insert ICS subscription links, filenames are synchronized with Python
             const icsFiles = [
                 { slug: 'kbh', name: 'UNF København' },
                 { slug: 'lyngby', name: 'UNF Lyngby' },
@@ -54,7 +54,7 @@
             document.getElementById('ics-links').innerHTML = html;
         </script>
         <script>
-            // 只做格式转换:UTC时间由后端插入,JS自动格式化本地时间为 yyyy-MM-dd HH:mm:ss,并展示浏览器时区
+            // Only format conversion: UTC time is inserted by backend, JS automatically formats local time as yyyy-MM-dd HH:mm:ss, and displays browser timezone
             const utcSpan = document.getElementById('last-update-utc');
             const tzSpan = document.getElementById('local-timezone');
             const currentRefSpan = document.getElementById('current-time-ref');
@@ -80,7 +80,7 @@
             updateCurrentRef();
             setInterval(updateCurrentRef, 60000);
 
-        // 文件列表为空时显示提示
+    // Show a hint when the file list is empty
         window.addEventListener('DOMContentLoaded', function() {
             var fileList = document.getElementById('file-list');
             var noFiles = document.getElementById('no-files');

@@ -3,7 +3,7 @@ name: UNF activity scraper and publish
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "10 6,10,14,20 * * *"  # UTC: 01:10, 06:10, 11:10, 14:10, 16:10, 20:10
+  - cron: "10 6,10,14,20 * * *"  # UTC: 01:10, 06:10, 11:10, 14:10, 16:10, 20:10
 
 permissions:
   contents: read
@@ -18,23 +18,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ICS_PAGES: 4  # 可调:抓取页面数,减少可加速
+      ICS_PAGES: 4  # Adjustable: number of pages to crawl, reduce for faster execution
     steps:
       - name: Show trigger type and run time
         run: |
-          echo "触发类型: $GITHUB_EVENT_NAME"
-          echo "运行时间: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Trigger type: $GITHUB_EVENT_NAME"
+          echo "Run time: $(date '+%Y-%m-%d %H:%M:%S')"
       - name: Set workflow run title
         run: |
-          echo "设置运行标题"
+          echo "Set workflow run title"
           if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
-            echo "run_title=定时触发 $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+            echo "run_title=Scheduled trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            echo "run_title=推送触发 $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+            echo "run_title=Push trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "run_title=手动触发 $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+            echo "run_title=Manual trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           else
-            echo "run_title=其他触发 $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+            echo "run_title=Other trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           fi
       - name: Checkout (shallow)
         uses: actions/checkout@v4
@@ -57,7 +57,7 @@ jobs:
           rm -rf dist
           mkdir -p dist
 
-      # Fail fast if secrets missing (never echo real values)
+  # Fail fast if secrets missing (never echo real values)
       - name: Check required secrets exist
         env:
           UNF_USER: ${{ secrets.UNF_USER }}
@@ -73,7 +73,7 @@ jobs:
           UNF_USER: ${{ secrets.UNF_USER }}
           UNF_PASS: ${{ secrets.UNF_PASS }}
         run: |
-          echo "使用页面数: ${ICS_PAGES}"
+          echo "Using number of pages: ${ICS_PAGES}"
           python unf_events_to_ics.py --out-dir dist --pages "$ICS_PAGES"
           ls -lah dist
 
@@ -81,11 +81,11 @@ jobs:
         run: |
           set -e
           dt=$(date -u "+%Y-%m-%d %H:%M:%S")
-          # 更新最后更新时间 (UTC)
+          # Update last update time (UTC)
           sed -i "s|<span id=\"last-update-utc\">.*</span>|<span id=\"last-update-utc\">UTC: $dt</span>|" index.html
-          # 生成文件列表 (dist 下的文件)
+          # Generate file list (files under dist)
           {
-            echo "<table><thead><tr><th>文件</th><th>大小(bytes)</th><th>最后修改(UTC)</th></tr></thead><tbody>"
+            echo "<table><thead><tr><th>File</th><th>Size(bytes)</th><th>Last Modified(UTC)</th></tr></thead><tbody>"
             for f in dist/*; do
               [ -f "$f" ] || continue
               base=$(basename "$f")
