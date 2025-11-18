@@ -1,4 +1,3 @@
-
 # UNF Aktivite Web Scraper
 
 This project automatically scrapes UNF event information for KBH, Lyngby, Aalborg, Aarhus, Danmark, and Odense, and generates ICS calendar files with Europe/Copenhagen timezone. Supports automated publishing via GitHub Actions.
@@ -23,19 +22,20 @@ This project automatically scrapes UNF event information for KBH, Lyngby, Aalbor
 
 1. Install dependencies:
 
-	```bash
-	pip install -r requirements.txt
-	```
+```bash
+pip install -r requirements.txt
+```
 
 2. Run the script:
 
-	```bash
-	python unf_events_to_ics.py --out-dir dist --pages 5
-	```
+```bash
+python unf_events_to_ics.py --out-dir dist --pages 5
+```
 
-	Optional arguments:
-	- `--workers N` Number of parallel crawling threads (default 3)
-	- `--cache-ttl SECONDS` Page cache time (default 0, off)
+Optional arguments:
+
+- `--workers N` Number of parallel crawling threads (default 3)
+- `--cache-ttl SECONDS` Page cache time (default 0, off)
 
 ## Main Files
 
