@@ -14,11 +14,15 @@
     </head>
     <body>
     <h1>UNF-Aktivite-ics</h1>
-        <h2>Last Update Time</h2>
+        
+        <h2>Data Last Update Time</h2>
         <div class="update-time" id="update-time">
-            <span id="last-update-utc">UTC: null</span><br />
-            <span id="current-time-ref" style="font-size:0.9em;color:#888;"></span><br />
-            <span id="local-timezone" style="font-size:0.9em;color:#888;"></span>
+            <span id="last-update-utc">UTC: null</span>
+        </div>
+
+        <h2>Current Time</h2>
+        <div style="font-size: 1.2em; color: #52c41a; margin-bottom: 20px;">
+            <span id="current-time-ref"></span>
         </div>
 
         <h2>ICS subscription links</h2>
@@ -56,7 +60,6 @@
         <script>
             // Only format conversion: UTC time is inserted by backend, JS automatically formats local time as yyyy-MM-dd HH:mm:ss, and displays browser timezone
             const utcSpan = document.getElementById('last-update-utc');
-            const tzSpan = document.getElementById('local-timezone');
             const currentRefSpan = document.getElementById('current-time-ref');
             function formatNormal(d) {
                 return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
@@ -72,10 +75,9 @@
                 let utcDate = new Date(match[1]);
                 utcSpan.textContent = 'UTC: ' + formatNormal(utcDate);
             }
-            tzSpan.textContent = 'Browser Timezone: ' + browserTz + ' (offset ' + offsetStr + ')';
             function updateCurrentRef() {
                 const now = new Date();
-                currentRefSpan.textContent = 'Current Time: ' + formatNormal(now);
+                currentRefSpan.textContent = 'Browser current Time: ' + formatNormal(now) + ' (' + browserTz + ', UTC ' + offsetStr + ')';
             }
             updateCurrentRef();
             setInterval(updateCurrentRef, 60000);
