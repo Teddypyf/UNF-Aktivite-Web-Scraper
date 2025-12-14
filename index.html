@@ -110,12 +110,12 @@
          * @returns {string} 格式化后的时间字符串 (yyyy-MM-dd HH:mm:ss)
          */
         function formatNormal(d) {
-            return d.getFullYear() + '-' + 
-                   String(d.getMonth()+1).padStart(2,'0') + '-' + 
-                   String(d.getDate()).padStart(2,'0') + ' ' + 
-                   String(d.getHours()).padStart(2,'0') + ':' + 
-                   String(d.getMinutes()).padStart(2,'0') + ':' + 
-                   String(d.getSeconds()).padStart(2,'0');
+            return d.getFullYear() + '-' +
+                String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getDate()).padStart(2, '0') + ' ' +
+                String(d.getHours()).padStart(2, '0') + ':' +
+                String(d.getMinutes()).padStart(2, '0') + ':' +
+                String(d.getSeconds()).padStart(2, '0');
         }
         
         // 获取浏览器时区信息
@@ -143,8 +143,8 @@
          */
         function updateCurrentRef() {
             const now = new Date();
-            currentRefSpan.textContent = 'Browser current Time: ' + formatNormal(now) + 
-                                        ' (' + browserTz + ', UTC ' + offsetStr + ')';
+            currentRefSpan.textContent = 'Browser current time: ' + formatNormal(now) +
+                ' (' + browserTz + ', UTC ' + offsetStr + ')';
         }
         
         // 立即显示当前时间
