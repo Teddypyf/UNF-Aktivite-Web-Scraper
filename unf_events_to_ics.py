@@ -11,7 +11,7 @@ Usage (local):
 """
 import os, sys, re, time, getpass, argparse, hashlib, threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 
 import requests
@@ -299,7 +299,7 @@ def uid_for(it: dict, slug: str) -> str:
     return "unf-" + hashlib.sha1(key).hexdigest() + "@unf"
 
 def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
-    now = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     lines = [
         "BEGIN:VCALENDAR",
         "PRODID:-//UNF Export//UNF Events to ICS//EN",
@@ -321,7 +321,11 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
         def fmt_local(dt: datetime) -> str:
             return dt.strftime("%Y%m%dT%H%M%S")  # no trailing 'Z', TZID specified on property
 
+        # Format update timestamp for description
+        update_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        
         desc = [
+            f"Update time: {update_time}",
             f"Vagter: {int(it.get('Vagter',0))}",
             f"Reserverede: {int(it.get('Reserverede',0))}",
         ]
