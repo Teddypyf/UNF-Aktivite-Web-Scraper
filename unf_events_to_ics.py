@@ -337,6 +337,8 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
             f"DTEND;TZID=Europe/Copenhagen:{fmt_local(end_local)}",
             f"SUMMARY:{ics_escape(it.get('Navn',''))}",
         ]
+        if int(it.get("Vagter", 0)) > 6:
+            evt.append("COLOR:red")
         if it.get("URL"):
             evt.append(f"URL:{ics_escape(it['URL'])}")
         if description:
