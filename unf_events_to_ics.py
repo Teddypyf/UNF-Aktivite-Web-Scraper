@@ -358,7 +358,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
         f.write(content)
 
 # ---------- Orchestration ----------
-def run_once(out_dir: str, max_pages: int, workers: int, cache_ttl: int) -> None:
+def run_once(out_dir: str, max_pages: int, workers: int) -> None:
     base_session = requests.Session()
     base_session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Python-Requests",
@@ -367,9 +367,9 @@ def run_once(out_dir: str, max_pages: int, workers: int, cache_ttl: int) -> None
     user, pwd = prompt_credentials()
     login(base_session, user, pwd)
 
-    # Simple in-memory cache {url: (fetched_time, text)} shared across threads
-    cache_lock = threading.Lock()
-    page_cache: dict[str, tuple[float, str]] = {}
+    # # Simple in-memory cache {url: (fetched_time, text)} shared across threads
+    # cache_lock = threading.Lock()
+    # page_cache: dict[str, tuple[float, str]] = {}
 
     def make_thread_session() -> requests.Session:
         # Clone headers + cookies for thread safety (requests.Session isn't strictly thread-safe)
@@ -382,11 +382,12 @@ def run_once(out_dir: str, max_pages: int, workers: int, cache_ttl: int) -> None
     def fetch_factory(session: requests.Session):
         def fetch(url: str):
             now = time.time()
-            if cache_ttl > 0:
-                with cache_lock:
-                    hit = page_cache.get(url)
-                    if hit and (now - hit[0]) <= cache_ttl:
-                        return BeautifulSoup(hit[1], "html.parser")
+            # # Cache check disabled
+            # if cache_ttl > 0:
+            #     with cache_lock:
+            #         hit = page_cache.get(url)
+            #         if hit and (now - hit[0]) <= cache_ttl:
+            #             return BeautifulSoup(hit[1], "html.parser")
             try:
                 r = session.get(url, timeout=20)
             except Exception as e:
@@ -396,9 +397,10 @@ def run_once(out_dir: str, max_pages: int, workers: int, cache_ttl: int) -> None
                 print(f"[WARN] non-200 {r.status_code} for {url}")
                 return None
             text = r.text
-            if cache_ttl > 0:
-                with cache_lock:
-                    page_cache[url] = (now, text)
+            # # Cache storage disabled
+            # if cache_ttl > 0:
+            #     with cache_lock:
+            #         page_cache[url] = (now, text)
             return BeautifulSoup(text, "html.parser")
         return fetch
 
@@ -408,7 +410,9 @@ def run_once(out_dir: str, max_pages: int, workers: int, cache_ttl: int) -> None
     if workers <= 0:
         workers = 1
     workers = min(max(1, workers), len(slugs))
-    print(f"[INFO] Parallel crawl workers={workers}, max_pages={max_pages}, cache_ttl={cache_ttl}s")
+    # # cache_ttl disabled - caching mechanism has been disabled
+    # print(f"[INFO] Parallel crawl workers={workers}, max_pages={max_pages}, cache_ttl={cache_ttl}s")
+    print(f"[INFO] Parallel crawl workers={workers}, max_pages={max_pages}")
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         for slug, path in LOCATIONS.items():
@@ -466,9 +470,9 @@ def main():
     ap.add_argument("--out-dir", default="dist", help="Output directory for ICS files")
     ap.add_argument("--pages", type=int, default=5, help="Max pages to crawl per location")
     ap.add_argument("--workers", type=int, default=3, help="Number of parallel crawling threads (suggest 1-4)")
-    ap.add_argument("--cache-ttl", type=int, default=int(os.getenv("UNF_CACHE_TTL", "0")), help="Page cache seconds (in-memory cache, 0=off)")
+    # # ap.add_argument("--cache-ttl", type=int, default=int(os.getenv("UNF_CACHE_TTL", "0")), help="Page cache seconds (in-memory cache, 0=off)")
     args = ap.parse_args()
-    run_once(args.out_dir, args.pages, args.workers, args.cache_ttl)
+    run_once(args.out_dir, args.pages, args.workers)
 
 if __name__ == "__main__":
     main()
