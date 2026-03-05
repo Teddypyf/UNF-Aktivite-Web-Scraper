@@ -17,6 +17,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
+from dateutil import tz
 BASE = "https://frivillig.unf.dk"
 LOGIN_URL = "https://frivillig.unf.dk/login/?next=/events/kbh/"
 LOCATIONS = {
@@ -317,17 +318,19 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
         if not start_local:
             continue
         end_local = start_local + timedelta(hours=2)  # default duration 2h
+        high_vagter = int(it.get("Vagter", 0)) > 6
 
         def fmt_local(dt: datetime) -> str:
             return dt.strftime("%Y%m%dT%H%M%S")  # no trailing 'Z', TZID specified on property
 
         # Format update timestamp for description
-        update_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        cph_tz = tz.gettz('Europe/Copenhagen')
+        update_time = datetime.now(cph_tz).strftime("%Y-%m-%d %H:%M")
         
         desc = [
-            f"Update time: {update_time}",
             f"Vagter: {int(it.get('Vagter',0))}",
             f"Reserverede: {int(it.get('Reserverede',0))}",
+            f"Sidst opdateret: {update_time}"
         ]
         if it.get("URL"):
             desc.append(f"URL: {it['URL']}")
@@ -339,10 +342,11 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
             f"DTSTAMP:{now}",
             f"DTSTART;TZID=Europe/Copenhagen:{fmt_local(start_local)}",
             f"DTEND;TZID=Europe/Copenhagen:{fmt_local(end_local)}",
-            f"SUMMARY:{ics_escape(it.get('Navn',''))}",
+            f"SUMMARY:{ics_escape(('🔴 ' if high_vagter else '') + it.get('Navn',''))}",
         ]
-        if int(it.get("Vagter", 0)) > 6:
-            evt.append("COLOR:red")
+        if high_vagter:
+            evt.append("COLOR:#FF0000")
+            evt.append("CATEGORIES:UNF-HIGH-VAGTER")
         if it.get("URL"):
             evt.append(f"URL:{ics_escape(it['URL'])}")
         if description:
