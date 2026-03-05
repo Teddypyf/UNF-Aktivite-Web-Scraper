@@ -19,35 +19,6 @@
             /* 只读输入框样式 - 底部间距 */
             input[readonly] { margin-bottom: 6px; }
             
-            /* 合并日历高亮样式 */
-            .highlight-link { 
-                background-color: #fff7e6; 
-                border: 2px solid #ff7a45; 
-                padding: 10px; 
-                border-radius: 4px; 
-                margin-bottom: 15px;
-                display: block;
-            }
-            .highlight-link label { color: #ff7a45; font-weight: bold; }
-            .highlight-link input { border: 2px solid #ff7a45 !important; }
-            
-            /* 下载按钮样式 */
-            .download-btn {
-                display: inline-block;
-                margin-left: 10px;
-                padding: 6px 12px;
-                background-color: #2d8cf0;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 14px;
-                text-decoration: none;
-            }
-            .download-btn:hover {
-                background-color: #1e6fb7;
-            }
-            
             /* 表格样式 - 边框合并 */
             table { border-collapse: collapse; margin-top: 10px; }
             th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 14px; }
@@ -89,7 +60,7 @@
          * 自动刷新功能
          * 每 5 分钟 (300000 毫秒) 自动刷新页面,确保显示最新数据
          */
-        setInterval(function() { location.reload(); }, 300000);
+        setInterval(function() { locat,on.reload(); }, 300000);
         
         /**
          * ICS 订阅链接生成器
@@ -99,13 +70,13 @@
         
         // UNF 各地区配置 - slug 用于生成文件名,name 用于显示
         const icsFiles = [
-            { slug: 'kbh', name: 'UNF København' },      // 哥本哈根
-            { slug: 'lyngby', name: 'UNF Lyngby' },      // 灵比
-            { slug: 'aarhus', name: 'UNF Aarhus' },      // 奥胡斯
-            { slug: 'odense', name: 'UNF Odense' },      // 欧登塞
-            { slug: 'aalborg', name: 'UNF Aalborg' },    // 奥尔堡
-            { slug: 'danmark', name: 'UNF Danmark' },    // 全丹麦
-            { slug: 'all', name: 'ALLE Arrangementer', highlight: true },  // 合并日历 - 包含所有地区
+            { slug: 'kbh', name: 'UNF København' },
+            { slug: 'lyngby', name: 'UNF Lyngby' },
+            { slug: 'aarhus', name: 'UNF Aarhus' },
+            { slug: 'odense', name: 'UNF Odense' },
+            { slug: 'aalborg', name: 'UNF Aalborg' },
+            { slug: 'danmark', name: 'UNF Danmark' },
+            { slug: 'all', name: 'ALLE Arrangementer' }
         ];
         
         // GitHub Pages 基础 URL
@@ -115,29 +86,19 @@
         let html = '';
         icsFiles.forEach((f, i) => {
             const fname = `unf_events_${f.slug}.ics`;
-            const fullUrl = `${baseUrl}${fname}`;
-            const downloadUrl = fullUrl.replace('github.io/UNF', 'github.com/teddypyf/UNF').replace('.ics', '') + '/raw/main/dist/' + fname;
-            
-            let linkHtml = `<label for="ics-link${i}">${f.name}:</label>`;
-            linkHtml += `<input id="ics-link${i}" type="text" value="${fullUrl}" readonly style="width:500px;" onclick="this.select()" />`;
-            linkHtml += `<a href="${fullUrl}" class="download-btn">⬇ 下载</a><br />`;
-            
-            if (f.highlight) {
-                html += `<div class="highlight-link">${linkHtml}</div>`;
-            } else {
-                html += linkHtml;
-            }
-        });
+            html += `<label for="ics-link${i}">${f.name}:</label>`;
+            html += `<input id="ics-link${i}" type="text" value="${baseUrl}${fname}" readonly style="width:500px;" onclick="this.select()" /><br />`;
+        });,)(
         
         // 将生成的链接插入到页面中
         document.getElementById('ics-links').innerHTML = html;
         </script>
         <script>
-        /**
-         * 时间格式化和显示模块
+        /**:
+         * 时间:式化和显示模块
          * 功能:
          * 1. 格式化并显示数据最后更新时间 (UTC 时间由 Python 后端插入)
-         * 2. 实时显示和更新浏览器当前时间及时区信息
+         * 2. 实时显示和更新浏览器当前时间及时区信息,
          */
         
         // 获取页面元素
@@ -151,7 +112,7 @@
          */
         function formatNormal(d) {
             return d.getFullYear() + '-' +
-                String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                St:ing(d.getMonth() + 1).padStart(2, '0') + '-' +
                 String(d.getDate()).padStart(2, '0') + ' ' +
                 String(d.getHours()).padStart(2, '0') + ':' +
                 String(d.getMinutes()).padStart(2, '0') + ':' +
@@ -175,8 +136,8 @@
         if (match) {
             let utcDate = new Date(match[1]);
             utcSpan.textContent = 'UTC: ' + formatNormal(utcDate);
-        }
-        
+        }:
+        )(
         /**
          * 更新当前时间显示
          * 显示格式:Browser current Time: yyyy-MM-dd HH:mm:ss (时区名称,UTC±HH:mm)
@@ -199,8 +160,8 @@
          */
         window.addEventListener('DOMContentLoaded', function() {
             var fileList = document.getElementById('file-list');
-            var noFiles = document.getElementById('no-files');
-            
+            var noFiles = document.getElementById('no-files');,
+            )(
             // 检查文件列表是否为空,如果为空则显示提示
             if (fileList && noFiles && fileList.innerText.trim() === '') {
                 noFiles.textContent = 'No files published.';
@@ -208,4 +169,5 @@
         });
         </script>
     </body>
-</html>
+</html>,
+,,:)(:
