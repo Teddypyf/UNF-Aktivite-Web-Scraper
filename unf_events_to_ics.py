@@ -299,7 +299,15 @@ def uid_for(it: dict, slug: str) -> str:
     key = (slug + "|" + it.get("URL","") + "|" + it.get("Navn","") + "|" + it.get("Dato","") + "|" + it.get("Klokkeslæt","")).encode("utf-8")
     return "unf-" + hashlib.sha1(key).hexdigest() + "@unf"
 
-def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
+def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: dict[str, str] | None = None) -> None:
+    """Generate ICS file from rows.
+    
+    Args:
+        rows: List of event dictionaries
+        out_path: Output file path
+        calname: Calendar name
+        location_prefix: Optional dict mapping row to location prefix (for combined calendar)
+    """
     now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     lines = [
         "BEGIN:VCALENDAR",
@@ -313,7 +321,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
     # Add VTIMEZONE for Europe/Copenhagen (required when using TZID)
     lines += [ln for ln in VTIMEZONE_EUROPE_CPH.splitlines()]
 
-    for it in rows:
+    for row_idx, it in enumerate(rows):
         start_local = parse_dt_local(it.get("Dato",""), it.get("Klokkeslæt",""))
         if not start_local:
             continue
@@ -336,13 +344,20 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str) -> None:
             desc.append(f"URL: {it['URL']}")
         description = "\\n".join(ics_escape(p) for p in desc)
 
+        # Build event title with optional location prefix
+        title = it.get('Navn','')
+        if location_prefix and row_idx in location_prefix:
+            title = f"[{location_prefix[row_idx]}] {title}"
+        if high_vagter:
+            title = '🔴 ' + title
+
         evt = [
             "BEGIN:VEVENT",
             f"UID:{uid_for(it, calname)}",
             f"DTSTAMP:{now}",
             f"DTSTART;TZID=Europe/Copenhagen:{fmt_local(start_local)}",
             f"DTEND;TZID=Europe/Copenhagen:{fmt_local(end_local)}",
-            f"SUMMARY:{ics_escape(('🔴 ' if high_vagter else '') + it.get('Navn',''))}",
+            f"SUMMARY:{ics_escape(title)}",
         ]
         if high_vagter:
             evt.append("COLOR:#FF0000")
@@ -444,6 +459,23 @@ def run_once(out_dir: str, max_pages: int, workers: int) -> None:
         rows_to_ics(rows, out_path, calname)
         print(f"[{slug}] Saved {len(rows)} events -> {out_path}")
         ics_files.append(out_path)
+
+    # Generate combined calendar with all events from all locations
+    all_rows = []
+    location_map = {}  # Map row index to location name
+    row_offset = 0
+    for slug in slugs:
+        rows = results.get(slug, [])
+        for idx, row in enumerate(rows):
+            location_map[row_offset + idx] = slug.upper()
+        all_rows.extend(rows)
+        row_offset += len(rows)
+    
+    if all_rows:
+        combined_path = os.path.join(out_dir, "unf_events_all.ics")
+        rows_to_ics(all_rows, combined_path, "UNF ALLE Events", location_map)
+        print(f"[COMBINED] Saved {len(all_rows)} events -> {combined_path}")
+        ics_files.append(combined_path)
 
     print("ICS_FILES:" + ",".join(ics_files))
 
