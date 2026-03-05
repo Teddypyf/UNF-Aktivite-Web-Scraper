@@ -326,7 +326,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         if not start_local:
             continue
         end_local = start_local + timedelta(hours=2)  # default duration 2h
-        high_vagter = int(it.get("Vagter", 0)) > 6
+        low_vagter = int(it.get("Vagter", 0)) < 6
 
         def fmt_local(dt: datetime) -> str:
             return dt.strftime("%Y%m%dT%H%M%S")  # no trailing 'Z', TZID specified on property
@@ -348,8 +348,8 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         title = it.get('Navn','')
         if location_prefix and row_idx in location_prefix:
             title = f"[{location_prefix[row_idx]}] {title}"
-        if high_vagter:
-            title = '🔴 ' + title
+        if low_vagter:
+            title = '🍕 ' + title
 
         evt = [
             "BEGIN:VEVENT",
@@ -359,9 +359,6 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
             f"DTEND;TZID=Europe/Copenhagen:{fmt_local(end_local)}",
             f"SUMMARY:{ics_escape(title)}",
         ]
-        if high_vagter:
-            evt.append("COLOR:#FF0000")
-            evt.append("CATEGORIES:UNF-HIGH-VAGTER")
         if it.get("URL"):
             evt.append(f"URL:{ics_escape(it['URL'])}")
         if description:
