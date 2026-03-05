@@ -58,7 +58,7 @@
         <script>
         /**
          * 自动刷新功能
-         * 每 5 分钟(300000 毫秒)自动刷新页面,确保显示最新数据
+         * 每 5 分钟 (300000 毫秒) 自动刷新页面,确保显示最新数据
          */
         setInterval(function() { location.reload(); }, 300000);
         
@@ -97,7 +97,7 @@
         /**
          * 时间格式化和显示模块
          * 功能:
-         * 1. 格式化并显示数据最后更新时间(UTC 时间由 Python 后端插入)
+         * 1. 格式化并显示数据最后更新时间 (UTC 时间由 Python 后端插入)
          * 2. 实时显示和更新浏览器当前时间及时区信息
          */
         
@@ -121,21 +121,39 @@
         
         // 获取浏览器时区信息
         let browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;  // 时区名称,如 "Europe/Copenhagen"
-        let offsetMin = -new Date().getTimezoneOffset();                   // 时区偏移(分钟)
+        let offsetMin = -new Date().getTimezoneOffset();                   // 时区偏移 (分钟)
         let sign = offsetMin >= 0 ? '+' : '-';                             // 偏移符号
         let absMin = Math.abs(offsetMin);                                  // 偏移绝对值
         let offsetStr = sign + String(Math.floor(absMin/60)).padStart(2, '0') + ':' + 
                         String(absMin%60).padStart(2, '0');                // 格式化为 "+HH:mm"
         
         /**
-         * 处理并显示数据更新时间
-         * Python 脚本会插入 ISO 8601 格式的 UTC 时间,这里将其格式化为易读格式
+         * 处理并显示数据更新时间 (哥本哈根时间)
+         * Python 脚本会插入 ISO 8601 格式的 UTC 时间,这里将其转换为哥本哈根时间并格式化为易读格式
          */
         let utcText = utcSpan.textContent;
         let match = utcText.match(/UTC: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
         if (match) {
             let utcDate = new Date(match[1]);
-            utcSpan.textContent = 'UTC: ' + formatNormal(utcDate);
+            // 使用 Intl.DateTimeFormat 格式化为哥本哈根时间
+            let copenhagenFormatter = new Intl.DateTimeFormat('da-DK', {
+                timeZone: 'Europe/Copenhagen',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            let parts = copenhagenFormatter.formatToParts(utcDate);
+            let formatted = parts.find(p => p.type === 'year').value + '-' +
+                           parts.find(p => p.type === 'month').value + '-' +
+                           parts.find(p => p.type === 'day').value + ' ' +
+                           parts.find(p => p.type === 'hour').value + ':' +
+                           parts.find(p => p.type === 'minute').value + ':' +
+                           parts.find(p => p.type === 'second').value;
+            utcSpan.textContent = 'Copenhagen: ' + formatted + ' (Europe/Copenhagen, UTC+01:00/+02:00)';
         }
         
         /**
@@ -151,7 +169,7 @@
         // 立即显示当前时间
         updateCurrentRef();
         
-        // 每分钟(60000 毫秒)更新一次当前时间
+        // 每分钟 (60000 毫秒) 更新一次当前时间
         setInterval(updateCurrentRef, 60000);
 
         /**
