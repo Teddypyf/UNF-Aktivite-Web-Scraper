@@ -326,7 +326,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         if not start_local:
             continue
         end_local = start_local + timedelta(hours=2)  # default duration 2h
-        low_vagter = int(it.get("Vagter", 0)) < 6
+        vagter_count = int(it.get("Vagter", 0))
 
         def fmt_local(dt: datetime) -> str:
             return dt.strftime("%Y%m%dT%H%M%S")  # no trailing 'Z', TZID specified on property
@@ -348,8 +348,14 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         title = it.get('Navn','')
         if location_prefix and row_idx in location_prefix:
             title = f"[{location_prefix[row_idx]}] {title}"
-        if low_vagter:
-            title = '🍕 ' + title
+        
+        # Add pizza emoji with status indicator based on vagter count
+        if vagter_count >= 8:
+            title = '🍕🔴 ' + title
+        elif vagter_count >= 6:
+            title = '🍕🟠 ' + title
+        else:
+            title = '🍕🟢 ' + title
 
         evt = [
             "BEGIN:VEVENT",
