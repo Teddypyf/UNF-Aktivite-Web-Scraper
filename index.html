@@ -23,9 +23,23 @@
             table { border-collapse: collapse; margin-top: 10px; }
             th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 14px; }
             th { background: #f5f5f5; }
+            
+            /* 夜间模式 - 18:00-6:00 自动启用 */
+            body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+            body.dark-mode .update-time { color: #5dade2; }
+            body.dark-mode input[readonly] { background: #2d2d2d; color: #e0e0e0; border: 1px solid #444; }
+            body.dark-mode th, body.dark-mode td { border-color: #444; }
+            body.dark-mode th { background: #2d2d2d; }
         </style>
     </head>
     <body>
+    <script>
+        // 检测时间并自动启用夜间模式 (18:00-6:00)
+        const hour = new Date().getHours();
+        if (hour >= 18 || hour < 6) {
+            document.body.classList.add('dark-mode');
+        }
+    </script>
     <h1>UNF-Aktivite-ics</h1>
         
         <!-- 数据最后更新时间区域 - 显示爬虫最后抓取数据的时间 -->
@@ -87,7 +101,8 @@
         icsFiles.forEach((f, i) => {
             const fname = `unf_events_${f.slug}.ics`;
             html += `<label for="ics-link${i}">${f.name}:</label>`;
-            html += `<input id="ics-link${i}" type="text" value="${baseUrl}${fname}" readonly style="width:500px;" onclick="this.select()" /><br />`;
+            html += `<input id="ics-link${i}" type="text" value="${baseUrl}${fname}" readonly style="width:500px;" onclick="this.select()" />`;
+            html += `<button type="button" onclick="navigator.clipboard.writeText(document.getElementById('ics-link${i}').value)">copy link</button><br />`;
         });
         
         // 将生成的链接插入到页面中
@@ -148,11 +163,11 @@
             });
             let parts = copenhagenFormatter.formatToParts(utcDate);
             let formatted = parts.find(p => p.type === 'year').value + '-' +
-                           parts.find(p => p.type === 'month').value + '-' +
-                           parts.find(p => p.type === 'day').value + ' ' +
-                           parts.find(p => p.type === 'hour').value + ':' +
-                           parts.find(p => p.type === 'minute').value + ':' +
-                           parts.find(p => p.type === 'second').value;
+                            parts.find(p => p.type === 'month').value + '-' +
+                            parts.find(p => p.type === 'day').value + ' ' +
+                            parts.find(p => p.type === 'hour').value + ':' +
+                            parts.find(p => p.type === 'minute').value + ':' +
+                            parts.find(p => p.type === 'second').value;
             utcSpan.textContent = 'Copenhagen: ' + formatted + ' (Europe/Copenhagen, UTC+01:00/+02:00)';
         }
         
