@@ -3,7 +3,7 @@ name: UNF activity scraper and publish
 on:
   workflow_dispatch: {}
   schedule:
-  - cron: "10 6,10,14,20 * * *"  # UTC: 01:10, 06:10, 11:10, 14:10, 16:10, 20:10
+    - cron: "10 6,10,14,20 * * *" # UTC: 01:10, 06:10, 11:10, 14:10, 16:10, 20:10
 
 permissions:
   contents: read
@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ICS_PAGES: 4  # Adjustable: number of pages to crawl, reduce for faster execution
+      ICS_PAGES: 4 # Adjustable: number of pages to crawl, reduce for faster execution
     steps:
       - name: Show trigger type and run time
         run: |
@@ -41,23 +41,21 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Python (with pip cache)
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: 'pip'
-          cache-dependency-path: 'requirements.txt'
 
       - name: Install deps
         run: |
-          pip install -r requirements.txt
+          pip install requests beautifulsoup4 python-dateutil
 
       - name: Clean dist
         run: |
           rm -rf dist
           mkdir -p dist
 
-  # Fail fast if secrets missing (never echo real values)
+      # Fail fast if secrets missing (never echo real values)
       - name: Check required secrets exist
         env:
           UNF_USER: ${{ secrets.UNF_USER }}
