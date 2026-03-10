@@ -84,7 +84,7 @@ def absolutize(href: str) -> str | None:
 def norm_time(s: str) -> str:
     if not s: return ""
     m = re.search(r"(\d{1,2}):(\d{2})", str(s))
-    return m.group(1) if m else str(s).strip()
+    return f"{int(m.group(1)):02d}:{m.group(2)}" if m else str(s).strip()
 
 def norm_date(s: str) -> str:
     if not s: return ""
