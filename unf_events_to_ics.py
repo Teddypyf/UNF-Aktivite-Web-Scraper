@@ -83,14 +83,16 @@ def absolutize(href: str) -> str | None:
 
 def norm_time(s: str) -> str:
     if not s: return ""
+    if str(s).strip().upper() in ("N/A", "NA", "-"): return ""
     m = re.search(r"(\d{1,2}):(\d{2})", str(s))
-    return m.group(1) if m else str(s).strip()
+    return m.group(0) if m else str(s).strip()
 
 def norm_date(s: str) -> str:
     if not s: return ""
+    if str(s).strip().upper() in ("N/A", "NA", "-"): return ""
     try:
         dt = dateparser.parse(str(s), dayfirst=True, fuzzy=True)
-        return dt.strftime("%Y-%m-%d")
+        return dt.strftime("%Y-%m-%d") if dt else ""
     except Exception:
         return ""
 
@@ -334,7 +336,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         if not start_local:
             continue
         end_local = start_local + timedelta(hours=2)  # default duration 2h
-        vagter_count = int(it.get("Vagter", 0))
+        vagter_count = to_int(it.get("Vagter", 0))
 
         def fmt_local(dt: datetime) -> str:
             return dt.strftime("%Y%m%dT%H%M%S")  # no trailing 'Z', TZID specified on property
@@ -344,8 +346,8 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         update_time = datetime.now(cph_tz).strftime("%Y-%m-%d %H:%M")
         
         desc = [
-            f"Vagter: {int(it.get('Vagter',0))}",
-            f"Reserverede: {int(it.get('Reserverede',0))}",
+            f"Vagter: {to_int(it.get('Vagter',0))}",
+            f"Reserverede: {to_int(it.get('Reserverede',0))}",
             f"Sidst opdateret: {update_time}"
         ]
         if it.get("URL"):
