@@ -22,15 +22,20 @@
 
 1. 安装依赖：
    ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
    pip install -r requirements.txt
    ```
 2. 运行脚本：
    ```bash
    python unf_events_to_ics.py --out-dir dist --pages 5
    ```
+3. 抓取前可先做一次基本检查：
+   ```bash
+   python unf_events_to_ics.py --help
+   ```
    可选参数：
    - `--workers N` 并行抓取线程数（默认3）
-   - `--cache-ttl 秒` 页面缓存时间（默认0关闭）
 
 ## 主要文件说明
 
@@ -51,4 +56,3 @@
 - `dist/unf_events_odense.ics`：Odense 活动 ICS 文件
 - `dist/unf_events_aalborg.ics`：Aalborg 活动 ICS 文件
 - `dist/unf_events_danmark.ics`：Danmark 活动 ICS 文件
-

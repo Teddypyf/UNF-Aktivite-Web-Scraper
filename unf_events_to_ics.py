@@ -26,7 +26,7 @@ LOCATIONS = {
     "aarhus": "/events/aarhus/",
     "odense": "/events/odense/",
     "aalborg":"/events/aalborg/",
-    "danmark":"/events/danmark/",
+    "danmark":"/events/dk/",
 }
 ORDER = ["Navn","Dato","Ugedag","Klokkeslæt","Vagter","Reserverede","Pladser","Deltagere","Ekstern/Intern"]
 
@@ -312,7 +312,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         calname: Calendar name
         location_prefix: Optional dict mapping row to location prefix (for combined calendar)
     """
-    now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    cph_tz = tz.gettz("Europe/Copenhagen")
     lines = [
         "BEGIN:VCALENDAR",
         "PRODID:-//UNF Export//UNF Events to ICS//EN",
@@ -335,14 +335,12 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         def fmt_local(dt: datetime) -> str:
             return dt.strftime("%Y%m%dT%H%M%S")  # no trailing 'Z', TZID specified on property
 
-        # Format update timestamp for description
-        cph_tz = tz.gettz('Europe/Copenhagen')
-        update_time = datetime.now(cph_tz).strftime("%Y-%m-%d %H:%M")
-        
+        start_aware = start_local.replace(tzinfo=cph_tz) if cph_tz else start_local.replace(tzinfo=timezone.utc)
+        dtstamp = start_aware.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
         desc = [
             f"Vagter: {int(it.get('Vagter',0))}",
             f"Reserverede: {int(it.get('Reserverede',0))}",
-            f"Sidst opdateret: {update_time}"
         ]
         if it.get("URL"):
             desc.append(f"URL: {it['URL']}")
@@ -364,7 +362,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         evt = [
             "BEGIN:VEVENT",
             f"UID:{uid_for(it, calname)}",
-            f"DTSTAMP:{now}",
+            f"DTSTAMP:{dtstamp}",
             f"DTSTART;TZID=Europe/Copenhagen:{fmt_local(start_local)}",
             f"DTEND;TZID=Europe/Copenhagen:{fmt_local(end_local)}",
             f"SUMMARY:{ics_escape(title)}",

@@ -23,6 +23,8 @@ This project automatically scrapes UNF event information for KBH, Lyngby, Aalbor
 1. Install dependencies:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -32,10 +34,15 @@ pip install -r requirements.txt
 python unf_events_to_ics.py --out-dir dist --pages 5
 ```
 
+3. Optional sanity check before scraping:
+
+```bash
+python unf_events_to_ics.py --help
+```
+
 Optional arguments:
 
 - `--workers N` Number of parallel crawling threads (default 3)
-- `--cache-ttl SECONDS` Page cache time (default 0, off)
 
 ## Main Files
 
