@@ -356,12 +356,13 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
             title = f"[{location_prefix[row_idx]}] {title}"
         
         # Add pizza emoji with status indicator based on vagter count
-        if vagter_count >= 8:
-            title = '🍕🔴 ' + title
-        elif vagter_count >= 6:
-            title = '🍕🟠 ' + title
-        else:
-            title = '🍕🟢 ' + title
+        # NOTE: Disabled — emoji prefixes cause calendar parsing errors
+        # if vagter_count >= 8:
+        #     title = '🍕🔴 ' + title
+        # elif vagter_count >= 6:
+        #     title = '🍕🟠 ' + title
+        # else:
+        #     title = '🍕🟢 ' + title
 
         evt = [
             "BEGIN:VEVENT",
