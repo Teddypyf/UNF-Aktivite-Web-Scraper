@@ -26,7 +26,7 @@ LOCATIONS = {
     "aarhus": "/events/aarhus/",
     "odense": "/events/odense/",
     "aalborg":"/events/aalborg/",
-    "danmark":"/events/danmark/",
+    "dk":"/events/dk/",
 }
 ORDER = ["Navn","Dato","Ugedag","Klokkeslæt","Vagter","Reserverede","Pladser","Deltagere","Ekstern/Intern"]
 
@@ -372,6 +372,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         evt.append("STATUS:CONFIRMED")
         evt += ["TRANSP:OPAQUE","END:VEVENT"]
         lines += [fold_ical_line(e) for e in evt]
+        lines.append("")  # blank line between events
 
     lines.append("END:VCALENDAR")
     content = "\r\n".join(lines) + "\r\n"
