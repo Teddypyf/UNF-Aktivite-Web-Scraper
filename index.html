@@ -23,6 +23,13 @@
             table { border-collapse: collapse; margin-top: 10px; }
             th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 14px; }
             th { background: #f5f5f5; }
+
+            /* 夜间模式 - 18:00-6:00 自动启用 */
+            body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+            body.dark-mode .update-time { color: #5dade2; }
+            body.dark-mode input[readonly] { background: #2d2d2d; color: #e0e0e0; border: 1px solid #444; }
+            body.dark-mode th, body.dark-mode td { border-color: #444; }
+            body.dark-mode th { background: #2d2d2d; }
         </style>
     </head>
     <body>
@@ -61,6 +68,21 @@
          * 每 5 分钟 (300000 毫秒) 自动刷新页面,确保显示最新数据
          */
         setInterval(function() { location.reload(); }, 300000);
+
+        /**
+         * 检测时间并自动启用夜间模式 (18:00-6:00)
+         * 每分钟检查一次,动态切换 dark-mode class
+         */
+        function applyDarkModeByTime() {
+            const h = new Date().getHours();
+            if (h >= 18 || h < 6) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+        applyDarkModeByTime();
+        setInterval(applyDarkModeByTime, 60000);
         
         /**
          * ICS 订阅链接生成器
