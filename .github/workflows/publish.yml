@@ -13,6 +13,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write
 
 concurrency:
   group: "pages"
@@ -40,6 +41,15 @@ jobs:
           else
             echo "run_title=Other trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
           fi
+      - name: Clear stale GitHub Actions caches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Delete all caches except the pip cache to prevent stale ICS artifacts
+          gh cache list --repo "${{ github.repository }}" --json key,id \
+            | jq -r '.[] | select(.key | test("setup-python") | not) | .id' \
+            | xargs -r -I{} gh cache delete {} --repo "${{ github.repository }}" || true
+
       - name: Checkout (shallow)
         uses: actions/checkout@v4
         with:

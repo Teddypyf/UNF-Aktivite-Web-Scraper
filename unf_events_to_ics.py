@@ -323,6 +323,8 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         "METHOD:PUBLISH",
         f"X-WR-CALNAME:{ics_escape(calname)}",
         "X-WR-TIMEZONE:Europe/Copenhagen",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+        "X-PUBLISHED-TTL:PT1H",
     ]
     # Add VTIMEZONE for Europe/Copenhagen (required when using TZID)
     lines += [ln for ln in VTIMEZONE_EUROPE_CPH.splitlines()]
