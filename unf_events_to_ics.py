@@ -285,6 +285,13 @@ def ics_escape(text: str) -> str:
     if text is None: return ""
     return str(text).replace("\\","\\\\").replace("\n","\\n").replace(",","\\,").replace(";","\\;")
 
+def strip_urls(text: str) -> str:
+    if not text:
+        return ""
+    # Keep SUMMARY clean by removing any embedded URL-like fragments.
+    cleaned = re.sub(r"https?://\S+|www\.\S+", "", str(text), flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", cleaned).strip()
+
 def parse_dt_local(date_str: str, time_str: str) -> datetime | None:
     if not date_str: return None
     try:
@@ -347,7 +354,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         description = "\\n".join(ics_escape(p) for p in desc)
 
         # Build event title with optional location prefix
-        title = it.get('Navn','')
+        title = strip_urls(it.get('Navn',''))
         if location_prefix and row_idx in location_prefix:
             title = f"[{location_prefix[row_idx]}] {title}"
         
