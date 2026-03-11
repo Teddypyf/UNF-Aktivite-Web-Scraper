@@ -283,7 +283,13 @@ def fold_ical_line(line: str) -> str:
 
 def ics_escape(text: str) -> str:
     if text is None: return ""
-    return str(text).replace("\\","\\\\").replace("\n","\\n").replace(",","\\,").replace(";","\\;")
+    s = str(text).replace("\r\n", "\n").replace("\r", "\n")  # normalize line endings
+    return s.replace("\\","\\\\").replace("\n","\\n").replace(",","\\,").replace(";","\\;")
+
+def clean_summary(text: str) -> str:
+    """For SUMMARY field: strip newlines/carriage returns, replace with space."""
+    if text is None: return ""
+    return re.sub(r'[\r\n]+', ' ', str(text)).strip()
 
 def parse_dt_local(date_str: str, time_str: str) -> datetime | None:
     if not date_str: return None
@@ -363,7 +369,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
             f"DTSTAMP:{now}",
             f"DTSTART;TZID=Europe/Copenhagen:{fmt_local(start_local)}",
             f"DTEND;TZID=Europe/Copenhagen:{fmt_local(end_local)}",
-            f"SUMMARY:{ics_escape(title)}",
+            f"SUMMARY:{ics_escape(clean_summary(title))}",
         ]
         if it.get("URL"):
             evt.append(f"URL:{ics_escape(it['URL'])}")
