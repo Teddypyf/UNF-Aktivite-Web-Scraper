@@ -292,7 +292,11 @@ def parse_dt_local(date_str: str, time_str: str) -> datetime | None:
     except Exception:
         return None
     m = re.search(r"(\d{1,2}):(\d{2})", time_str or "")
-    hh, mm = (int(m.group(1)), int(m.group(2))) if m else (18, 0)  # default 18:00
+    if m:
+        hh, mm = int(m.group(1)), int(m.group(2))
+    else:
+        hour_only = re.search(r"\b(\d{1,2})\b", time_str or "")
+        hh, mm = (int(hour_only.group(1)), 0) if hour_only else (18, 0)  # default 18:00
     return datetime(d.year, d.month, d.day, hh, mm)
 
 def uid_for(it: dict, slug: str) -> str:
