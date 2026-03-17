@@ -86,13 +86,39 @@ def norm_time(s: str) -> str:
     m = re.search(r"(\d{1,2}):(\d{2})", str(s))
     return f"{int(m.group(1)):02d}:{m.group(2)}" if m else str(s).strip()
 
+def parse_event_date(s: str):
+    if not s:
+        return None
+    text = str(s).strip()
+
+    # Prefer explicit numeric formats first to avoid day/month swaps.
+    ymd = re.match(r"^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$", text)
+    if ymd:
+        y, m, d = map(int, ymd.groups())
+        try:
+            return datetime(y, m, d).date()
+        except ValueError:
+            return None
+
+    dmy = re.match(r"^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$", text)
+    if dmy:
+        d, m, y = map(int, dmy.groups())
+        if y < 100:
+            y += 2000
+        try:
+            return datetime(y, m, d).date()
+        except ValueError:
+            return None
+
+    try:
+        return dateparser.parse(text, dayfirst=True, fuzzy=True).date()
+    except Exception:
+        return None
+
 def norm_date(s: str) -> str:
     if not s: return ""
-    try:
-        dt = dateparser.parse(str(s), dayfirst=True, fuzzy=True)
-        return dt.strftime("%Y-%m-%d")
-    except Exception:
-        return ""
+    d = parse_event_date(str(s))
+    return d.strftime("%Y-%m-%d") if d else ""
 
 def to_int(s) -> int:
     if s is None: return 0
@@ -294,9 +320,8 @@ def strip_urls(text: str) -> str:
 
 def parse_dt_local(date_str: str, time_str: str) -> datetime | None:
     if not date_str: return None
-    try:
-        d = dateparser.parse(date_str, dayfirst=True, fuzzy=True).date()
-    except Exception:
+    d = parse_event_date(date_str)
+    if not d:
         return None
     m = re.search(r"(\d{1,2}):(\d{2})", time_str or "")
     if m:
