@@ -1,4 +1,5 @@
 name: UNF activity scraper and publish
+run-name: "${{ github.event_name }} @ ${{ github.run_started_at }}"
 
 on:
   workflow_dispatch: {}
@@ -24,18 +25,6 @@ jobs:
         run: |
           echo "Trigger type: $GITHUB_EVENT_NAME"
           echo "Run time: $(date '+%Y-%m-%d %H:%M:%S')"
-      - name: Set workflow run title
-        run: |
-          echo "Set workflow run title"
-          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
-            echo "run_title=Scheduled trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            echo "run_title=Push trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "run_title=Manual trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          else
-            echo "run_title=Other trigger $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          fi
       - name: Checkout (shallow)
         uses: actions/checkout@v4
         with:
