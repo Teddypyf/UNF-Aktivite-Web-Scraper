@@ -86,10 +86,31 @@ def norm_time(s: str) -> str:
     m = re.search(r"(\d{1,2}):(\d{2})", str(s))
     return f"{int(m.group(1)):02d}:{m.group(2)}" if m else str(s).strip()
 
+def normalize_date_text(s: str) -> str:
+    """Normalize common scraped date formats into YYYY-MM-DD when possible.
+
+    The source site often uses dd.mm.yyyy; this function canonicalizes that
+    form early so downstream parsing is deterministic.
+    """
+    if not s:
+        return ""
+    text = str(s).strip().replace("\xa0", " ")
+
+    # Canonical source format from site: dd.mm.yyyy
+    dmy_dot = re.search(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b", text)
+    if dmy_dot:
+        d, m, y = map(int, dmy_dot.groups())
+        try:
+            return datetime(y, m, d).strftime("%Y-%m-%d")
+        except ValueError:
+            return text
+
+    return text
+
 def parse_event_date(s: str):
     if not s:
         return None
-    text = str(s).strip()
+    text = normalize_date_text(str(s))
 
     # Prefer explicit numeric formats first to avoid day/month swaps.
     ymd = re.match(r"^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$", text)
@@ -117,7 +138,7 @@ def parse_event_date(s: str):
 
 def norm_date(s: str) -> str:
     if not s: return ""
-    d = parse_event_date(str(s))
+    d = parse_event_date(normalize_date_text(str(s)))
     return d.strftime("%Y-%m-%d") if d else ""
 
 def to_int(s) -> int:
@@ -374,8 +395,6 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
             f"Vagter: {int(it.get('Vagter',0))}",
             f"Reserverede: {int(it.get('Reserverede',0))}",
         ]
-        if it.get("URL"):
-            desc.append(f"URL: {it['URL']}")
         description = "\\n".join(ics_escape(p) for p in desc)
 
         # Build event title with optional location prefix
