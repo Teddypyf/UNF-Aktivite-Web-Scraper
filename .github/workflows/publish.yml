@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ICS_PAGES: 4 # Adjustable: number of pages to crawl, reduce for faster execution
+      ICS_PAGES: 8 # Adjustable: number of pages to crawl, reduce for faster execution
     steps:
       - name: Show trigger type and run time
         run: |
