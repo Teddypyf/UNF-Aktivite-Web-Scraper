@@ -1,5 +1,4 @@
 name: UNF activity scraper and publish
-run-name: "${{ github.event_name }} @ ${{ github.run_started_at }}"
 
 on:
   workflow_dispatch: {}
