@@ -374,6 +374,8 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         "METHOD:PUBLISH",
         f"X-WR-CALNAME:{ics_escape(calname)}",
         "X-WR-TIMEZONE:Europe/Copenhagen",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+        "X-PUBLISHED-TTL:PT1H",
     ]
     # Add VTIMEZONE for Europe/Copenhagen (required when using TZID)
     lines += [ln for ln in VTIMEZONE_EUROPE_CPH.splitlines()]
@@ -535,27 +537,29 @@ def run_once(out_dir: str, max_pages: int, workers: int) -> None:
 
     print("ICS_FILES:" + ",".join(ics_files))
 
-    # Automatically update UTC time in index.html
-    update_index_html_with_utc("index.html")
+    # Automatically update Copenhagen time in index.html
+    update_index_html_with_cph("index.html")
 
-def update_index_html_with_utc(index_html_path):
+def update_index_html_with_cph(index_html_path):
     import re
-    from datetime import datetime, timezone
-    # Always use UTC time
-    utc_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    from datetime import datetime
+    from dateutil import tz
+    # Use Copenhagen time
+    cph_tz = tz.gettz("Europe/Copenhagen")
+    cph_now = datetime.now(cph_tz).strftime("%Y-%m-%d %H:%M:%S")
     try:
         with open(index_html_path, "r", encoding="utf-8") as f:
             html = f.read()
-    # Replace UTC time
+        # Replace Copenhagen time
         new_html = re.sub(
-            r'(<span id="last-update-utc">)UTC: [^<]*?(</span>)',
-            f'\\1UTC: {utc_now}\\2',
+            r'(<span id="last-update">)Copenhagen: [^<]*?(</span>)',
+            f'\\1Copenhagen: {cph_now}\\2',
             html
         )
         with open(index_html_path, "w", encoding="utf-8") as f:
             f.write(new_html)
     except Exception as e:
-        print(f"[WARN] Failed to update UTC time in index.html: {e}")
+        print(f"[WARN] Failed to update time in index.html: {e}")
 
 def main():
     ap = argparse.ArgumentParser()
