@@ -5,9 +5,9 @@ Login -> Crawl -> Parse -> Generate two ICS feeds (KBH & Lyngby) with TZID=Europ
 No intermediate CSV.
 
 Env (in CI via GitHub Actions Secrets):
-  UNF_USER, UNF_PASS
+UNF_USER, UNF_PASS
 Usage (local):
-  python unf_events_to_ics.py --out-dir dist --pages 5
+python unf_events_to_ics.py --out-dir dist --pages 5
 """
 import os, sys, re, time, getpass, argparse, hashlib, threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -366,6 +366,8 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         location_prefix: Optional dict mapping row to location prefix (for combined calendar)
     """
     cph_tz = tz.gettz("Europe/Copenhagen")
+    cph_now = datetime.now(cph_tz).strftime("%Y-%m-%d %H:%M:%S")
+
     lines = [
         "BEGIN:VCALENDAR",
         "PRODID:-//UNF Export//UNF Events to ICS//EN",
@@ -396,6 +398,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         desc = [
             f"Vagter: {int(it.get('Vagter',0))}",
             f"Reserverede: {int(it.get('Reserverede',0))}",
+            f"Sidst opdateret: {cph_now}",
         ]
         description = "\\n".join(ics_escape(p) for p in desc)
 
