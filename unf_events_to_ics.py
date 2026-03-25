@@ -356,7 +356,7 @@ def uid_for(it: dict, slug: str) -> str:
     key = (slug + "|" + it.get("URL","") + "|" + it.get("Navn","") + "|" + it.get("Dato","") + "|" + it.get("Klokkeslæt","")).encode("utf-8")
     return "unf-" + hashlib.sha1(key).hexdigest() + "@unf"
 
-def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: dict[str, str] | None = None) -> None:
+def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: dict[str, str] | None = None, add_pizza_indicator: bool = False) -> None:
     """Generate ICS file from rows.
     
     Args:
@@ -364,6 +364,7 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
         out_path: Output file path
         calname: Calendar name
         location_prefix: Optional dict mapping row to location prefix (for combined calendar)
+        add_pizza_indicator: Whether to add a pizza emoji based on vagter count
     """
     cph_tz = tz.gettz("Europe/Copenhagen")
     cph_now = datetime.now(cph_tz).strftime("%Y-%m-%d %H:%M:%S")
@@ -408,12 +409,13 @@ def rows_to_ics(rows: list[dict], out_path: str, calname: str, location_prefix: 
             title = f"[{location_prefix[row_idx]}] {title}"
         
         # Add pizza emoji with status indicator based on vagter count
-        if vagter_count >= 8:
-            title = '🍕🔴 ' + title
-        elif vagter_count >= 6:
-            title = '🍕🟠 ' + title
-        else:
-            title = '🍕🟢 ' + title
+        if add_pizza_indicator:
+            if vagter_count >= 8:
+                title = '🍕🔴 ' + title
+            elif vagter_count >= 6:
+                title = '🍕🟠 ' + title
+            else:
+                title = '🍕🟢 ' + title
 
         evt = [
             "BEGIN:VEVENT",
@@ -517,9 +519,16 @@ def run_once(out_dir: str, max_pages: int, workers: int) -> None:
         rows = results.get(slug, [])
         out_path = os.path.join(out_dir, f"unf_events_{slug}.ics")
         calname = f"UNF {slug.upper()} Events"
-        rows_to_ics(rows, out_path, calname)
+        rows_to_ics(rows, out_path, calname, add_pizza_indicator=False)
         print(f"[{slug}] Saved {len(rows)} events -> {out_path}")
         ics_files.append(out_path)
+        
+        # With pizza indicator
+        out_path_pizza = os.path.join(out_dir, f"unf_events_{slug}_pizza.ics")
+        calname_pizza = f"UNF {slug.upper()} Events (Pizza)"
+        rows_to_ics(rows, out_path_pizza, calname_pizza, add_pizza_indicator=True)
+        print(f"[{slug}] Saved {len(rows)} events -> {out_path_pizza}")
+        ics_files.append(out_path_pizza)
 
     # Generate combined calendar with all events from all locations
     all_rows = []
@@ -534,9 +543,14 @@ def run_once(out_dir: str, max_pages: int, workers: int) -> None:
     
     if all_rows:
         combined_path = os.path.join(out_dir, "unf_events_all.ics")
-        rows_to_ics(all_rows, combined_path, "UNF ALLE Events", location_map)
+        rows_to_ics(all_rows, combined_path, "UNF ALLE Events", location_map, add_pizza_indicator=False)
         print(f"[COMBINED] Saved {len(all_rows)} events -> {combined_path}")
         ics_files.append(combined_path)
+
+        combined_path_pizza = os.path.join(out_dir, "unf_events_all_pizza.ics")
+        rows_to_ics(all_rows, combined_path_pizza, "UNF ALLE Events (Pizza)", location_map, add_pizza_indicator=True)
+        print(f"[COMBINED] Saved {len(all_rows)} events -> {combined_path_pizza}")
+        ics_files.append(combined_path_pizza)
 
     print("ICS_FILES:" + ",".join(ics_files))
 
