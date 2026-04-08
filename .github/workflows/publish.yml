@@ -4,6 +4,9 @@ on:
   workflow_dispatch: {}
   schedule:
     - cron: "10 6,10,14,20 * * *" # UTC: 01:10, 06:10, 11:10, 14:10, 16:10, 20:10
+    push:
+      branches:
+        - main
 
 permissions:
   contents: read
