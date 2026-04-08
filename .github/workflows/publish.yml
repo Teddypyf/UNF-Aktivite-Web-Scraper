@@ -4,9 +4,9 @@ on:
   workflow_dispatch: {}
   schedule:
     - cron: "10 6,10,14,20 * * *" # utc
-    push:
-      branches:
-        - main
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
