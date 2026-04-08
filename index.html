@@ -1,36 +1,36 @@
 <!--
-    UNF 活动日历订阅页面
-    功能:展示 UNF 各地区活动的 ICS 日历订阅链接,显示数据更新时间和当前时间
+    UNF Activity Calendar Subscription Page
+    Functionality: Show ICS subscription links for UNF regional events, display data update time and current time
 -->
 <html lang="zh-cn">
 	<head>
 		<meta charset="UTF-8" />
 		<title>Last Update Time</title>
 		<style>
-			/* 页面基础样式 */
+			/* Basic page style */
 			body {
 				font-family: Arial, sans-serif;
 				margin: 40px;
 			}
 
-			/* 更新时间显示样式 - 蓝色大字 */
+			/* Update time display style - large blue text */
 			.update-time {
 				font-size: 1.5em;
 				color: #2d8cf0;
 			}
 
-			/* ICS 链接标签样式 - 固定宽度对齐 */
+			/* ICS link label style - fixed width alignment */
 			label {
 				display: inline-block;
 				width: 240px;
 			}
 
-			/* 只读输入框样式 - 底部间距 */
+			/* Read-only input field style - bottom margin */
 			input[readonly] {
 				margin-bottom: 6px;
 			}
 
-			/* 表格样式 - 边框合并 */
+			/* Table style - collapse borders */
 			table {
 				border-collapse: collapse;
 				margin-top: 10px;
@@ -45,7 +45,7 @@
 				background: #f5f5f5;
 			}
 
-			/* 夜间模式 - 18:00-6:00 自动启用 */
+			/* Dark mode - auto-enable from 18:00 to 06:00 */
 			body.dark-mode {
 				background: #1a1a1a;
 				color: #e0e0e0;
@@ -69,7 +69,7 @@
 	</head>
 	<body>
 		<script>
-			// 检测时间并自动启用夜间模式 (18:00-6:00)
+			// Detect time and auto-enable dark mode (18:00-06:00)
 			const hour = new Date().getHours();
 			if (hour >= 18 || hour < 6) {
 				document.body.classList.add("dark-mode");
@@ -77,25 +77,25 @@
 		</script>
 		<h1>UNF-Aktivite-ics</h1>
 
-		<!-- 数据最后更新时间区域 - 显示爬虫最后抓取数据的时间 -->
+		<!-- Data last update time area - Shows the time when the crawler last fetched data -->
 		<h2>Data Last Update Time</h2>
 		<div class="update-time" id="update-time">
-			<!-- 哥本哈根时间由 Python 后端脚本插入 -->
+			<!-- Copenhagen time is inserted by the Python backend script -->
 			<span id="last-update">Copenhagen: 2026-03-21 12:00:00</span>
 		</div>
 
-		<!-- 当前时间区域 - 显示用户浏览器的本地时间和时区 -->
+		<!-- Current time area - Shows the user browser's local time and timezone -->
 		<h2>Current Time</h2>
 		<div style="font-size: 1.2em; color: #52c41a; margin-bottom: 20px">
-			<!-- 当前时间每分钟自动更新 -->
+			<!-- Current time updates automatically every minute -->
 			<span id="current-time-ref"></span>
 		</div>
 
-		<!-- ICS 订阅链接区域 - 动态生成各地区的日历订阅链接 -->
+		<!-- ICS subscription links area - Dynamically generate calendar subscription links for each region -->
 		<h2>ICS subscription links</h2>
 		<div id="ics-links"></div>
 
-		<!-- 已发布文件列表区域 - 由 Python 脚本动态插入文件列表 -->
+		<!-- Published file list area - File list is dynamically inserted by the Python script -->
 		<h2>Published Files</h2>
 		<div id="file-list">
 			<!-- FILE_LIST_START -->
@@ -105,34 +105,34 @@
 
 		<script>
 			/**
-			 * 自动刷新功能
-			 * 每 5 分钟 (300000 毫秒) 自动刷新页面,确保显示最新数据
+			 * Auto-refresh functionality
+			 * Refreshes the page every 5 minutes (300000 ms) to ensure latest data is shown
 			 */
 			setInterval(function () {
 				location.reload();
 			}, 300000);
 
 			/**
-			 * ICS 订阅链接生成器
-			 * 功能:动态生成各个 UNF 地区的日历订阅链接
-			 * 注意:文件名需要与 Python 脚本生成的文件名保持同步
+			 * ICS subscription link generator
+			 * Functionality: Dynamically generates calendar subscription links for each UNF region
+			 * Note: File names must sync with the Python script output
 			 */
 
-			// UNF 各地区配置 - slug 用于生成文件名,name 用于显示
+			// UNF regional configurations - 'slug' is used for file generation, 'name' for display
 			const icsFiles = [
-				{ slug: "kbh", name: "UNF København" }, // 哥本哈根
-				{ slug: "lyngby", name: "UNF Lyngby" }, // 灵比
-				{ slug: "aarhus", name: "UNF Aarhus" }, // 奥胡斯
-				{ slug: "odense", name: "UNF Odense" }, // 欧登塞
-				{ slug: "aalborg", name: "UNF Aalborg" }, // 奥尔堡
-				{ slug: "danmark", name: "UNF Danmark" }, // 全丹麦
+				{ slug: "kbh", name: "UNF København" }, // Copenhagen
+				{ slug: "lyngby", name: "UNF Lyngby" }, // Lyngby
+				{ slug: "aarhus", name: "UNF Aarhus" }, // Aarhus
+				{ slug: "odense", name: "UNF Odense" }, // Odense
+				{ slug: "aalborg", name: "UNF Aalborg" }, // Aalborg
+				{ slug: "danmark", name: "UNF Danmark" }, // All Denmark
 				{ slug: "all", name: "ALLE Arrangementer" },
 			];
 
-			// GitHub Pages 基础 URL
+			// GitHub Pages base URL
 			const baseUrl = `https://teddypyf.github.io/UNF-Aktivite-Web-Scraper/`;
 
-			// 生成 HTML:每个地区一个标签和一个可点击选中的只读输入框
+			// Generate HTML: One label and one clickable read-only input field per region
 			let html = "";
 			icsFiles.forEach((f, i) => {
 				// No pizza link
@@ -148,21 +148,21 @@
 				html += `<button type="button" onclick="navigator.clipboard.writeText(document.getElementById('ics-link${i}_pizza').value)">copy link</button></div>`;
 			});
 
-			// 将生成的链接插入到页面中
+			// Insert generated links into the page
 			document.getElementById("ics-links").innerHTML = html;
 		</script>
 		<script>
 			/**
-			 * 时间格式化和实时显示当前时间模块
+			 * Time formatting and real-time display module
 			 */
 
-			// 获取页面元素
-			const currentRefSpan = document.getElementById("current-time-ref"); // 当前时间显示元素
+			// Get page elements
+			const currentRefSpan = document.getElementById("current-time-ref"); // Current time display element
 
 			/**
-			 * 时间格式化函数
-			 * @param {Date} d - 日期对象
-			 * @returns {string} 格式化后的时间字符串 (yyyy-MM-dd HH:mm:ss)
+			 * Time formatting function
+			 * @param {Date} d - Date object
+			 * @returns {string} Formatted time string (yyyy-MM-dd HH:mm:ss)
 			 */
 			function formatNormal(d) {
 				return (
@@ -180,20 +180,20 @@
 				);
 			}
 
-			// 获取浏览器时区信息
-			let browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone; // 时区名称,如 "Europe/Copenhagen"
-			let offsetMin = -new Date().getTimezoneOffset(); // 时区偏移 (分钟)
-			let sign = offsetMin >= 0 ? "+" : "-"; // 偏移符号
-			let absMin = Math.abs(offsetMin); // 偏移绝对值
+			// Get browser timezone information
+			let browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone; // Timezone name, e.g. "Europe/Copenhagen"
+			let offsetMin = -new Date().getTimezoneOffset(); // Timezone offset (minutes)
+			let sign = offsetMin >= 0 ? "+" : "-"; // Offset sign
+			let absMin = Math.abs(offsetMin); // Offset absolute value
 			let offsetStr =
 				sign +
 				String(Math.floor(absMin / 60)).padStart(2, "0") +
 				":" +
-				String(absMin % 60).padStart(2, "0"); // 格式化为 "+HH:mm"
+				String(absMin % 60).padStart(2, "0"); // Format as "+HH:mm"
 
 			/**
-			 * 更新当前时间显示
-			 * 显示格式:Browser current Time: yyyy-MM-dd HH:mm:ss (时区名称,UTC±HH:mm)
+			 * Update current time display
+			 * Display format: Browser current time: yyyy-MM-dd HH:mm:ss (Timezone name, UTC±HH:mm)
 			 */
 			function updateCurrentRef() {
 				const now = new Date();
@@ -207,21 +207,21 @@
 					")";
 			}
 
-			// 立即显示当前时间
+			// Display current time immediately
 			updateCurrentRef();
 
-			// 每15秒 更新一次当前时间
+			// Update current time every 15 seconds
 			setInterval(updateCurrentRef, 15000);
 
 			/**
-			 * 文件列表空状态提示
-			 * 功能:当文件列表为空时,显示提示信息
+			 * File list empty state hint
+			 * Functionality: shows a hint message when the file list is empty
 			 */
 			window.addEventListener("DOMContentLoaded", function () {
 				var fileList = document.getElementById("file-list");
 				var noFiles = document.getElementById("no-files");
 
-				// 检查文件列表是否为空,如果为空则显示提示
+				// Check if the file list is empty, and show a hint if so
 				if (fileList && noFiles && fileList.innerText.trim() === "") {
 					noFiles.textContent = "No files published.";
 				}
