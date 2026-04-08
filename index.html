@@ -93,23 +93,6 @@
 
 		<!-- ICS 订阅链接区域 - 动态生成各地区的日历订阅链接 -->
 		<h2>ICS subscription links</h2>
-		<div
-			id="pizza_info"
-			style="
-				margin-bottom: 25px;
-				font-size: 14px;
-				padding: 10px;
-				background-color: #f9f9f9;
-				border-left: 4px solid #2d8cf0;
-				border-radius: 4px;
-				display: none;
-			"
-		>
-			<strong>🍕 Pizza Info:</strong> Some events show a pizza indicator based
-			on the number of registered volunteers (Vagter).<br />
-			🍕🟢 &lt; 6 Vagter &nbsp;|&nbsp; 🍕🟠 6-7 Vagter &nbsp;|&nbsp; 🍕🔴 &ge; 8
-			Vagter
-		</div>
 		<div id="ics-links"></div>
 
 		<!-- 已发布文件列表区域 - 由 Python 脚本动态插入文件列表 -->
@@ -160,7 +143,7 @@
 
 				// Pizza link
 				const fname_pizza = `unf_events_${f.slug}_pizza.ics`;
-				html += `<div style="margin-bottom: 12px;"><label for="ics-link${i}_pizza">${f.name} <a href="#pizza_info" onclick="document.getElementById('pizza_info').style.display='block'">(pizza_info)</a>:</label>`;
+				html += `<div style="margin-bottom: 12px;"><label for="ics-link${i}_pizza">${f.name} (🍕):</label>`;
 				html += `<input id="ics-link${i}_pizza" type="text" value="${baseUrl}${fname_pizza}" readonly style="width:500px;" onclick="this.select()" />`;
 				html += `<button type="button" onclick="navigator.clipboard.writeText(document.getElementById('ics-link${i}_pizza').value)">copy link</button></div>`;
 			});
